@@ -1,0 +1,4 @@
+<a href="{{ route('admin.service-providers.index') }}" class="stat-tab {{ !request('status') ? 'active' : '' }}">All <span class="count">{{ $stats['total'] }}</span></a>
+<a href="{{ route('admin.service-providers.index', ['status' => 'pending']) }}" class="stat-tab warning {{ request('status')==='pending' ? 'active' : '' }}">Pending <span class="count">{{ $stats['pending'] }}</span></a>
+<a href="{{ route('admin.service-providers.index', ['status' => 'approved']) }}" class="stat-tab {{ request('status')==='approved' ? 'active' : '' }}">Approved <span class="count">{{ $stats['approved'] }}</span></a>
+<a href="{{ route('admin.service-providers.index', ['status' => 'rejected']) }}" class="stat-tab danger {{ request('status')==='rejected' ? 'active' : '' }}">Rejected <span class="count">{{ $stats['rejected'] }}</span></a>

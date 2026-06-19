@@ -1,0 +1,359 @@
+{
+	"info": {
+		"_postman_id": "plumbmanager-user-api-v2",
+		"name": "PlumbManager — User App API",
+		"description": "# PlumbManager User App API\n\nCustomer-facing mobile app API only (`/api/user/*`). No admin or provider endpoints.\n\n---\n\n## Quick Start\n\n| Step | Action |\n|------|--------|\n| 1 | Import this collection + **PlumbManager User App — Local** environment |\n| 2 | Set `base_url` → `http://127.0.0.1:8000` |\n| 3 | Run **01 Auth → Send OTP** then **Login** |\n| 4 | Token auto-saves to `{{token}}` — used for all protected routes |\n\n---\n\n## Demo Login\n\n| Field | Value |\n|-------|-------|\n| Mobile | `9876500001` |\n| User | Rahul Sharma (from seeder) |\n| OTP | Auto-saved from `debug_otp` when `APP_DEBUG=true` |\n\n---\n\n## New User Registration\n\n1. **Send OTP** with new mobile\n2. **Register** (before or instead of login for new numbers)\n3. Or **Login** — returns `needs_registration: true` if user not found\n\n---\n\n## Response Format\n\n```json\n{ \"success\": true, \"message\": \"...\", \"data\": { ... } }\n```\n\n---\n\n## Auth Header (Protected Routes)\n\n```\nAuthorization: Bearer {{token}}\nAccept: application/json\n```\n\n---\n\n## App Screen → API Map\n\nSee folder **00 — App Screen Flows** for step-by-step navigation matching the mobile UI.\n\n| App Screen | API |\n|------------|-----|\n| Register / Login | `/api/user/auth/*` |\n| Home | `/api/user/home` |\n| Search bar | `/api/user/search?q=` |\n| Product Categories | `/api/user/categories` |\n| Service Categories | `/api/user/service-categories` |\n| Cart tab | `/api/user/cart` |\n| Checkout / Payment | `/api/user/checkout/*` |\n| Profile tab | `/api/user/profile` |\n| Order History | `/api/user/orders` |\n| Booking History | `/api/user/bookings` |\n| Address | `/api/user/addresses` |\n| Help & Support | `/api/user/tickets` |\n| FAQs / Legal | `/api/user/faqs`, `/api/user/cms/{slug}` |\n\n---\n\n## Validation Rules\n\n- **Mobile:** exactly 10 digits, starts 6–9\n- **Email:** `@gmail.com` or domain ending `.in` / `.co`\n- **Coupons (demo):** `WELCOME10`, `FLAT50`",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "base_url", "value": "http://127.0.0.1:8000" },
+		{ "key": "token", "value": "" },
+		{ "key": "mobile", "value": "9876500001" },
+		{ "key": "otp", "value": "" },
+		{ "key": "product_id", "value": "1" },
+		{ "key": "service_id", "value": "1" },
+		{ "key": "category_id", "value": "1" },
+		{ "key": "address_id", "value": "1" },
+		{ "key": "cart_item_id", "value": "1" },
+		{ "key": "order_id", "value": "1" },
+		{ "key": "booking_id", "value": "1" },
+		{ "key": "ticket_id", "value": "1" },
+		{ "key": "notification_id", "value": "1" }
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": ["pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });"]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "00 — App Screen Flows",
+			"description": "End-to-end flows matching the mobile app screens. Run in order after login.\n\n**Full shopping flow:** ① Home → ② Search → ③ Product → ④ Add Cart → ⑤ Cart → ⑥ Coupon → ⑦ Checkout\n\n**Service booking flow:** ① Home → ② Service → ③ Slots → ④ Create Booking\n\n**Profile flow:** Profile → Edit → Orders / Bookings / Address / Support / FAQs",
+			"item": [
+				{
+					"name": "Flow A — Login (existing user)",
+					"item": [
+						{
+							"name": "A1 Send OTP",
+							"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+								"const j = pm.response.json();",
+								"if (j.data?.debug_otp) { pm.collectionVariables.set('otp', j.data.debug_otp); pm.environment.set('otp', j.data.debug_otp); }"
+							]}}],
+							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\"\n}" },
+								"url": "{{base_url}}/api/user/auth/send-otp",
+								"description": "**Screen:** Login → Enter mobile → Get OTP" }
+						},
+						{
+							"name": "A2 Login",
+							"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+								"const j = pm.response.json();",
+								"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }"
+							]}}],
+							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": \"{{otp}}\"\n}" },
+								"url": "{{base_url}}/api/user/auth/login",
+								"description": "**Screen:** Enter OTP → Login" }
+						}
+					]
+				},
+				{
+					"name": "Flow B — Home Tab",
+					"item": [
+						{
+							"name": "B1 Home Screen",
+							"request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/home",
+								"description": "**Screen:** Home tab — banners, product/service categories, featured items, location" }
+						},
+						{
+							"name": "B2 Search",
+							"request": { "auth": { "type": "noauth" }, "method": "GET",
+								"url": { "raw": "{{base_url}}/api/user/search?q=pipe", "query": [{ "key": "q", "value": "pipe" }] },
+								"description": "**Screen:** Search bar — products + services" }
+						},
+						{
+							"name": "B3 Notifications",
+							"request": { "method": "GET", "url": "{{base_url}}/api/user/notifications",
+								"description": "**Screen:** Bell icon — unread count + list" }
+						}
+					]
+				},
+				{
+					"name": "Flow C — Shop (Product → Cart → Checkout)",
+					"item": [
+						{
+							"name": "C1 Product Detail",
+							"request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/products/{{product_id}}",
+								"description": "**Screen:** Tap product from home or category list" }
+						},
+						{
+							"name": "C2 Add to Cart",
+							"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"product_id\": {{product_id}},\n  \"quantity\": 1\n}" },
+								"url": "{{base_url}}/api/user/cart",
+								"description": "**Screen:** Add to cart button" }
+						},
+						{
+							"name": "C3 Cart Tab",
+							"request": { "method": "GET", "url": "{{base_url}}/api/user/cart",
+								"description": "**Screen:** Cart tab — items, subtotal, shipping, tax" }
+						},
+						{
+							"name": "C4 Apply Coupon",
+							"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"code\": \"WELCOME10\"\n}" },
+								"url": "{{base_url}}/api/user/cart/apply-coupon",
+								"description": "**Screen:** Promotion code field → Apply" }
+						},
+						{
+							"name": "C5 Payment Methods",
+							"request": { "method": "GET", "url": "{{base_url}}/api/user/checkout/payment-methods",
+								"description": "**Screen:** Payment Method — Razorpay / COD" }
+						},
+						{
+							"name": "C6 Place Order",
+							"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"address_id\": {{address_id}},\n  \"payment_method\": \"cod\",\n  \"coupon_code\": \"WELCOME10\"\n}" },
+								"url": "{{base_url}}/api/user/checkout/place-order",
+								"description": "**Screen:** Place Order button" }
+						}
+					]
+				},
+				{
+					"name": "Flow D — Book a Service",
+					"item": [
+						{
+							"name": "D1 Service Detail",
+							"request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/services/{{service_id}}",
+								"description": "**Screen:** Tap service from Our Services list" }
+						},
+						{
+							"name": "D2 Available Slots",
+							"request": { "method": "GET",
+								"url": { "raw": "{{base_url}}/api/user/bookings/available-slots?date=2026-06-20", "query": [{ "key": "date", "value": "2026-06-20" }] },
+								"description": "**Screen:** Reschedule / date picker" }
+						},
+						{
+							"name": "D3 Create Booking",
+							"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"service_id\": {{service_id}},\n  \"address\": \"123, abc colony, Indore\",\n  \"scheduled_at\": \"2026-06-20 10:00:00\"\n}" },
+								"url": "{{base_url}}/api/user/bookings",
+								"description": "**Screen:** Book service confirmation" }
+						}
+					]
+				},
+				{
+					"name": "Flow E — Profile Tab",
+					"item": [
+						{
+							"name": "E1 Profile",
+							"request": { "method": "GET", "url": "{{base_url}}/api/user/profile",
+								"description": "**Screen:** Profile tab — Hello + name" }
+						},
+						{
+							"name": "E2 Order History",
+							"request": { "method": "GET", "url": { "raw": "{{base_url}}/api/user/orders?status=all", "query": [{ "key": "status", "value": "all" }] },
+								"description": "**Screen:** Profile → Order History" }
+						},
+						{
+							"name": "E3 Booking History",
+							"request": { "method": "GET", "url": { "raw": "{{base_url}}/api/user/bookings?status=all", "query": [{ "key": "status", "value": "all" }] },
+								"description": "**Screen:** Profile → Booking History" }
+						},
+						{
+							"name": "E4 Addresses",
+							"request": { "method": "GET", "url": "{{base_url}}/api/user/addresses",
+								"description": "**Screen:** Profile → Address" }
+						},
+						{
+							"name": "E5 Help & Support",
+							"request": { "method": "GET", "url": "{{base_url}}/api/user/tickets",
+								"description": "**Screen:** Profile → Customer Support" }
+						},
+						{
+							"name": "E6 FAQs",
+							"request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/faqs",
+								"description": "**Screen:** Profile → FAQs" }
+						},
+						{
+							"name": "E7 Logout",
+							"request": { "method": "POST", "url": "{{base_url}}/api/user/auth/logout",
+								"description": "**Screen:** Profile → Log Out" }
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "01 — Authentication",
+			"description": "OTP-based login and registration. Public endpoints — no token required.",
+			"item": [
+				{
+					"name": "Send OTP",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"const j = pm.response.json();",
+						"if (j.data?.debug_otp) { pm.collectionVariables.set('otp', j.data.debug_otp); pm.environment.set('otp', j.data.debug_otp); console.log('OTP: ' + j.data.debug_otp); }",
+						"pm.test('OK', () => pm.response.to.have.status(200));"
+					]}}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\"\n}" },
+						"url": "{{base_url}}/api/user/auth/send-otp",
+						"description": "**POST** `/api/user/auth/send-otp`\n\n**Body:** `{ \"mobile\": \"9876500001\" }`\n\nSends 6-digit OTP. In debug mode, returns `debug_otp` in response." }
+				},
+				{
+					"name": "Login (Verify OTP)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"const j = pm.response.json();",
+						"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }",
+						"pm.test('OK', () => pm.response.to.have.status(200));"
+					]}}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": \"{{otp}}\"\n}" },
+						"url": "{{base_url}}/api/user/auth/login",
+						"description": "**POST** `/api/user/auth/login`\n\nReturns `token` if user exists, else `{ needs_registration: true }`." }
+				},
+				{
+					"name": "Register",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"const j = pm.response.json(); if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }"
+					]}}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n  \"name\": \"Lois Buily\",\n  \"mobile\": \"9123456789\",\n  \"email\": \"loisbecket@gmail.com\",\n  \"address\": \"12, abc colony, indore\"\n}" },
+						"url": "{{base_url}}/api/user/auth/register",
+						"description": "**POST** `/api/user/auth/register`\n\nRequires OTP verified first via Send OTP.\n\n**Fields:** name, mobile (unique), email (optional), address (optional)" }
+				},
+				{
+					"name": "Logout",
+					"request": { "method": "POST", "url": "{{base_url}}/api/user/auth/logout",
+						"description": "**POST** `/api/user/auth/logout` — requires Bearer token" }
+				}
+			]
+		},
+		{
+			"name": "02 — Home & Catalog",
+			"description": "Public browse endpoints — no auth required.",
+			"item": [
+				{ "name": "Home", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/home",
+					"description": "Banners, promo cards, product/service categories, featured items." } },
+				{ "name": "Banners", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/banners" } },
+				{ "name": "Product Categories", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/categories" } },
+				{ "name": "Products List", "request": { "auth": { "type": "noauth" }, "method": "GET",
+					"url": { "raw": "{{base_url}}/api/user/products?category_id={{category_id}}&search=&per_page=15",
+						"query": [{ "key": "category_id", "value": "{{category_id}}" }, { "key": "search", "value": "" }, { "key": "per_page", "value": "15" }] } } },
+				{ "name": "Product Detail", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/products/{{product_id}}" } },
+				{ "name": "Service Categories", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/service-categories" } },
+				{ "name": "Services List", "request": { "auth": { "type": "noauth" }, "method": "GET",
+					"url": { "raw": "{{base_url}}/api/user/services?category_id=&per_page=15", "query": [{ "key": "category_id", "value": "" }, { "key": "per_page", "value": "15" }] } } },
+				{ "name": "Service Detail", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/services/{{service_id}}" } },
+				{ "name": "Search", "request": { "auth": { "type": "noauth" }, "method": "GET",
+					"url": { "raw": "{{base_url}}/api/user/search?q=pipe", "query": [{ "key": "q", "value": "pipe", "description": "Required" }] },
+					"description": "Unified search — returns products[] and services[]" } }
+			]
+		},
+		{
+			"name": "03 — Profile",
+			"item": [
+				{ "name": "Get Profile", "request": { "method": "GET", "url": "{{base_url}}/api/user/profile" } },
+				{ "name": "Update Profile", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"name\": \"Rahul Sharma\",\n  \"mobile\": \"9876500001\",\n  \"email\": \"rahul@gmail.com\",\n  \"address\": \"123, abc colony, Delhi\"\n}" },
+					"url": "{{base_url}}/api/user/profile" } }
+			]
+		},
+		{
+			"name": "04 — Addresses",
+			"item": [
+				{ "name": "List Addresses", "request": { "method": "GET", "url": "{{base_url}}/api/user/addresses" } },
+				{ "name": "Add Address", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"label\": \"Home\",\n  \"full_name\": \"Shreya Shah\",\n  \"mobile\": \"9517530286\",\n  \"house_no\": \"G-14\",\n  \"road_area\": \"1st sabari nagar, sukhliya\",\n  \"city\": \"Indore\",\n  \"state\": \"M.P\",\n  \"country\": \"India\",\n  \"pincode\": \"452010\",\n  \"is_default\": true\n}" },
+					"url": "{{base_url}}/api/user/addresses",
+					"description": "**label:** Home | Office | Other" } },
+				{ "name": "Update Address", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"label\": \"Home\",\n  \"full_name\": \"Shreya Shah\",\n  \"mobile\": \"9517530286\",\n  \"pincode\": \"452010\",\n  \"is_default\": true\n}" },
+					"url": "{{base_url}}/api/user/addresses/{{address_id}}" } },
+				{ "name": "Delete Address", "request": { "method": "DELETE", "url": "{{base_url}}/api/user/addresses/{{address_id}}" } }
+			]
+		},
+		{
+			"name": "05 — Cart & Checkout",
+			"item": [
+				{ "name": "Get Cart", "request": { "method": "GET", "url": "{{base_url}}/api/user/cart" } },
+				{ "name": "Add to Cart", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"product_id\": {{product_id}},\n  \"quantity\": 1\n}" }, "url": "{{base_url}}/api/user/cart" } },
+				{ "name": "Update Quantity", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"quantity\": 2\n}" }, "url": "{{base_url}}/api/user/cart/{{cart_item_id}}" } },
+				{ "name": "Remove Item", "request": { "method": "DELETE", "url": "{{base_url}}/api/user/cart/{{cart_item_id}}" } },
+				{ "name": "Apply Coupon", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"code\": \"WELCOME10\"\n}" }, "url": "{{base_url}}/api/user/cart/apply-coupon",
+					"description": "Demo codes: WELCOME10 (10%), FLAT50 (₹50 off)" } },
+				{ "name": "Payment Methods", "request": { "method": "GET", "url": "{{base_url}}/api/user/checkout/payment-methods" } },
+				{ "name": "Place Order (COD)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"address_id\": {{address_id}},\n  \"payment_method\": \"cod\",\n  \"coupon_code\": \"WELCOME10\",\n  \"notes\": \"Deliver before 6 PM\"\n}" },
+					"url": "{{base_url}}/api/user/checkout/place-order" } },
+				{ "name": "Place Order (Razorpay)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"address_id\": {{address_id}},\n  \"payment_method\": \"razorpay\"\n}" },
+					"url": "{{base_url}}/api/user/checkout/place-order",
+					"description": "Returns razorpay order_id + key for mobile SDK" } }
+			]
+		},
+		{
+			"name": "06 — Orders",
+			"item": [
+				{ "name": "Order History (All)", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/user/orders?status=all", "query": [{ "key": "status", "value": "all", "description": "all|processing|out_for_delivery|delivered|cancelled" }] } } },
+				{ "name": "Order History (Processing)", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/user/orders?status=processing", "query": [{ "key": "status", "value": "processing" }] } } },
+				{ "name": "Order Detail", "request": { "method": "GET", "url": "{{base_url}}/api/user/orders/{{order_id}}" } },
+				{ "name": "Cancel Order", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"reason\": \"Ordered by mistake\"\n}" },
+					"url": "{{base_url}}/api/user/orders/{{order_id}}/cancel",
+					"description": "Only for processing orders. Shows cancel modal in app." } }
+			]
+		},
+		{
+			"name": "07 — Bookings",
+			"item": [
+				{ "name": "Booking History (All)", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/user/bookings?status=all", "query": [{ "key": "status", "value": "all", "description": "all|processing|confirmed|completed|cancelled" }] } } },
+				{ "name": "Create Booking", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"service_id\": {{service_id}},\n  \"address\": \"123, abc colony, Indore\",\n  \"scheduled_at\": \"2026-06-20 10:00:00\",\n  \"notes\": \"Kitchen leak\"\n}" },
+					"url": "{{base_url}}/api/user/bookings" } },
+				{ "name": "Booking Detail", "request": { "method": "GET", "url": "{{base_url}}/api/user/bookings/{{booking_id}}" } },
+				{ "name": "Available Slots", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/user/bookings/available-slots?date=2026-06-20", "query": [{ "key": "date", "value": "2026-06-20" }] } } },
+				{ "name": "Cancel Booking", "request": { "method": "POST", "url": "{{base_url}}/api/user/bookings/{{booking_id}}/cancel" } },
+				{ "name": "Reschedule Booking", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"scheduled_at\": \"2026-06-25 14:00:00\"\n}" },
+					"url": "{{base_url}}/api/user/bookings/{{booking_id}}/reschedule" } }
+			]
+		},
+		{
+			"name": "08 — Support & CMS",
+			"item": [
+				{ "name": "List Support Tickets", "request": { "method": "GET", "url": "{{base_url}}/api/user/tickets" } },
+				{ "name": "Create Support Ticket", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"type\": \"App Issue\",\n  \"email\": \"abc@gmail.com\",\n  \"subject\": \"Payment failed\",\n  \"description\": \"Payment did not complete.\"\n}" },
+					"url": "{{base_url}}/api/user/tickets" } },
+				{ "name": "Ticket Detail", "request": { "method": "GET", "url": "{{base_url}}/api/user/tickets/{{ticket_id}}" } },
+				{ "name": "FAQs", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/faqs" } },
+				{ "name": "Privacy Policy", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/cms/privacy-policy" } },
+				{ "name": "Terms & Conditions", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/cms/terms-and-conditions" } }
+			]
+		},
+		{
+			"name": "09 — Notifications",
+			"item": [
+				{ "name": "List Notifications", "request": { "method": "GET", "url": "{{base_url}}/api/user/notifications",
+					"description": "Returns unread_count + paginated items" } },
+				{ "name": "Mark as Read", "request": { "method": "POST", "url": "{{base_url}}/api/user/notifications/{{notification_id}}/read" } }
+			]
+		}
+	]
+}

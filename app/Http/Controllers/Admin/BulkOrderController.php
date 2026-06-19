@@ -1,0 +1,103 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Admin\Concerns\ExportsAdminTable;
+use App\Http\Controllers\Controller;
+use App\Models\BulkOrder;
+use App\Models\Quotation;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\View\View;
+use App\Support\AdminValidation as V;
+
+class BulkOrderController extends Controller
+{
+    use ExportsAdminTable;
+
+    public function index(Request $request): View
+    {
+        $bulkOrders = $this->filteredBulkOrders($request)->paginate(15)->withQueryString();
+
+        return view('admin.bulk-orders.index', compact('bulkOrders'));
+    }
+
+    public function export(Request $request)
+    {
+        $bulkOrders = $this->filteredBulkOrders($request)->withCount('files')->get();
+
+        return $this->exportResponse(
+            $request,
+            'bulk-orders',
+            'Bulk Order List',
+            ['Reference', 'Customer', 'Status', 'Files', 'Created Date'],
+            $bulkOrders->map(fn (BulkOrder $b) => [
+                $b->reference_number,
+                $b->user?->name ?? '',
+                $b->status,
+                $b->files_count,
+                $b->created_at->format('M d, Y'),
+            ])
+        );
+    }
+
+    private function filteredBulkOrders(Request $request): Builder
+    {
+        return $this->applyDateRange(
+            BulkOrder::with(['user', 'files'])
+                ->when($request->status, fn ($q, $s) => $q->where('status', $s))
+                ->latest(),
+            $request
+        );
+    }
+
+    public function show(BulkOrder $bulkOrder): View
+    {
+        $bulkOrder->load(['user', 'files', 'quotations.creator']);
+
+        return view('admin.bulk-orders.show', compact('bulkOrder'));
+    }
+
+    public function review(Request $request, BulkOrder $bulkOrder): RedirectResponse
+    {
+        $request->validate(['admin_notes' => V::notesRules()]);
+
+        $bulkOrder->update([
+            'status' => 'admin_review',
+            'admin_notes' => $request->input('admin_notes'),
+        ]);
+
+        return back()->with('success', 'Marked under review.');
+    }
+
+    public function createQuotation(Request $request, BulkOrder $bulkOrder): RedirectResponse
+    {
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'details' => ['nullable', 'string', V::maxRule('quotation_details')],
+        ]);
+
+        Quotation::create([
+            'bulk_order_id' => $bulkOrder->id,
+            'quotation_number' => 'QT-'.Str::upper(Str::random(8)),
+            'amount' => $data['amount'],
+            'details' => $data['details'] ?? null,
+            'status' => 'draft',
+            'created_by' => auth('admin')->id(),
+        ]);
+
+        $bulkOrder->update(['status' => 'quotation_generated']);
+
+        return back()->with('success', 'Quotation created.');
+    }
+
+    public function sendQuotation(BulkOrder $bulkOrder, Quotation $quotation): RedirectResponse
+    {
+        $quotation->update(['status' => 'sent', 'sent_at' => now()]);
+        $bulkOrder->update(['status' => 'quotation_sent']);
+
+        return back()->with('success', 'Quotation sent.');
+    }
+}
