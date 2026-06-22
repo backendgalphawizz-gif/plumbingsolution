@@ -6,7 +6,7 @@
     $map = [
         'active' => 'badge-success', 'approved' => 'badge-success', 'completed' => 'badge-success', 'delivered' => 'badge-success',
         'inactive' => 'badge-danger', 'rejected' => 'badge-danger', 'cancelled' => 'badge-danger', 'failed' => 'badge-danger', 'blocked' => 'badge-danger', 'suspended' => 'badge-neutral',
-        'pending' => 'badge-warning', 'assigned' => 'badge-info', 'accepted' => 'badge-info', 'packed' => 'badge-info', 'shipped' => 'badge-info',
+        'pending' => 'badge-warning', 'assigned' => 'badge-info', 'accepted' => 'badge-info', 'packed' => 'badge-info', 'shipped' => 'badge-info', 'paid' => 'badge-success',
         'refunded' => 'badge-neutral', 'returned' => 'badge-warning',
     ];
     $class = $map[$value] ?? 'badge-neutral';

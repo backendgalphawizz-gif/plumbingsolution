@@ -2,10 +2,15 @@
 
 namespace Database\Seeders;
 
+use App\Enums\ProviderStatus;
+use App\Enums\CouponAppliesTo;
 use App\Models\Coupon;
 use App\Models\Faq;
 use App\Models\Service;
 use App\Models\ServiceCategory;
+use App\Models\ServiceProvider;
+use App\Models\ServiceProviderReview;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -62,8 +67,8 @@ class UserAppSeeder extends Seeder
             }
         }
 
-        Coupon::firstOrCreate(
-            ['code' => 'WELCOME10'],
+        Coupon::updateOrCreate(
+            ['code' => 'WELCOME10', 'applies_to' => CouponAppliesTo::Order],
             [
                 'discount_type' => 'percent',
                 'discount_value' => 10,
@@ -73,8 +78,30 @@ class UserAppSeeder extends Seeder
             ]
         );
 
-        Coupon::firstOrCreate(
-            ['code' => 'FLAT50'],
+        Coupon::updateOrCreate(
+            ['code' => 'FLAT50', 'applies_to' => CouponAppliesTo::Order],
+            [
+                'discount_type' => 'fixed',
+                'discount_value' => 50,
+                'min_order_amount' => 200,
+                'status' => true,
+                'expires_at' => now()->addMonths(3),
+            ]
+        );
+
+        Coupon::updateOrCreate(
+            ['code' => 'SERVICE10', 'applies_to' => CouponAppliesTo::Booking],
+            [
+                'discount_type' => 'percent',
+                'discount_value' => 10,
+                'min_order_amount' => 100,
+                'status' => true,
+                'expires_at' => now()->addMonths(6),
+            ]
+        );
+
+        Coupon::updateOrCreate(
+            ['code' => 'BOOK50', 'applies_to' => CouponAppliesTo::Booking],
             [
                 'discount_type' => 'fixed',
                 'discount_value' => 50,
@@ -107,6 +134,54 @@ class UserAppSeeder extends Seeder
             Faq::firstOrCreate(
                 ['question' => $faq['question']],
                 ['answer' => $faq['answer'], 'status' => true, 'sort_order' => $i + 1]
+            );
+        }
+
+        $this->seedProviderServices();
+    }
+
+    private function seedProviderServices(): void
+    {
+        $providers = ServiceProvider::where('status', ProviderStatus::Approved)->get();
+        $services = Service::where('status', true)->get();
+
+        if ($providers->isEmpty() || $services->isEmpty()) {
+            return;
+        }
+
+        $serviceMap = [
+            'Arjun Plumber' => ['leak-repair', 'burst-pipe-repair'],
+            'Sunil Pipe Expert' => ['leak-repair', 'burst-pipe-repair', 'shower-installation'],
+            'Ravi Heater Tech' => ['geyser-installation', 'geyser-repair'],
+            'Mohammed Drain Pro' => ['kitchen-drain-cleaning', 'bathroom-drain-cleaning'],
+        ];
+
+        foreach ($providers as $provider) {
+            $slugs = $serviceMap[$provider->name] ?? $services->random(min(2, $services->count()))->pluck('slug')->all();
+            $ids = $services->whereIn('slug', $slugs)->pluck('id');
+            $provider->services()->syncWithoutDetaching($ids);
+        }
+
+        $user = User::first();
+        if (! $user) {
+            return;
+        }
+
+        $sampleReviews = [
+            ['provider' => 'Arjun Plumber', 'rating' => 5, 'comment' => 'Very professional and quick service.'],
+            ['provider' => 'Sunil Pipe Expert', 'rating' => 4, 'comment' => 'Good work, arrived on time.'],
+            ['provider' => 'Mohammed Drain Pro', 'rating' => 5, 'comment' => 'Excellent drain cleaning service.'],
+        ];
+
+        foreach ($sampleReviews as $review) {
+            $provider = $providers->firstWhere('name', $review['provider']);
+            if (! $provider) {
+                continue;
+            }
+
+            ServiceProviderReview::firstOrCreate(
+                ['user_id' => $user->id, 'service_provider_id' => $provider->id],
+                ['rating' => $review['rating'], 'comment' => $review['comment']]
             );
         }
     }

@@ -53,5 +53,29 @@
             </main>
         </div>
     </div>
+    @stack('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('form').forEach((form) => {
+                const from = form.querySelector('.admin-date-from');
+                const to = form.querySelector('.admin-date-to');
+                if (!from || !to) return;
+
+                const sync = () => {
+                    if (from.value) {
+                        to.min = from.value;
+                        if (to.value && to.value < from.value) {
+                            to.value = from.value;
+                        }
+                    } else {
+                        to.removeAttribute('min');
+                    }
+                };
+
+                from.addEventListener('change', sync);
+                sync();
+            });
+        });
+    </script>
 </body>
 </html>

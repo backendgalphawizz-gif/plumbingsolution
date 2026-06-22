@@ -1,18 +1,22 @@
 {
 	"info": {
-		"_postman_id": "plumbmanager-user-api-v2",
+		"_postman_id": "plumbmanager-user-api-v3",
 		"name": "PlumbManager — User App API",
-		"description": "# PlumbManager User App API\n\nCustomer-facing mobile app API only (`/api/user/*`). No admin or provider endpoints.\n\n---\n\n## Quick Start\n\n| Step | Action |\n|------|--------|\n| 1 | Import this collection + **PlumbManager User App — Local** environment |\n| 2 | Set `base_url` → `http://127.0.0.1:8000` |\n| 3 | Run **01 Auth → Send OTP** then **Login** |\n| 4 | Token auto-saves to `{{token}}` — used for all protected routes |\n\n---\n\n## Demo Login\n\n| Field | Value |\n|-------|-------|\n| Mobile | `9876500001` |\n| User | Rahul Sharma (from seeder) |\n| OTP | Auto-saved from `debug_otp` when `APP_DEBUG=true` |\n\n---\n\n## New User Registration\n\n1. **Send OTP** with new mobile\n2. **Register** (before or instead of login for new numbers)\n3. Or **Login** — returns `needs_registration: true` if user not found\n\n---\n\n## Response Format\n\n```json\n{ \"success\": true, \"message\": \"...\", \"data\": { ... } }\n```\n\n---\n\n## Auth Header (Protected Routes)\n\n```\nAuthorization: Bearer {{token}}\nAccept: application/json\n```\n\n---\n\n## App Screen → API Map\n\nSee folder **00 — App Screen Flows** for step-by-step navigation matching the mobile UI.\n\n| App Screen | API |\n|------------|-----|\n| Register / Login | `/api/user/auth/*` |\n| Home | `/api/user/home` |\n| Search bar | `/api/user/search?q=` |\n| Product Categories | `/api/user/categories` |\n| Service Categories | `/api/user/service-categories` |\n| Cart tab | `/api/user/cart` |\n| Checkout / Payment | `/api/user/checkout/*` |\n| Profile tab | `/api/user/profile` |\n| Order History | `/api/user/orders` |\n| Booking History | `/api/user/bookings` |\n| Address | `/api/user/addresses` |\n| Help & Support | `/api/user/tickets` |\n| FAQs / Legal | `/api/user/faqs`, `/api/user/cms/{slug}` |\n\n---\n\n## Validation Rules\n\n- **Mobile:** exactly 10 digits, starts 6–9\n- **Email:** `@gmail.com` or domain ending `.in` / `.co`\n- **Coupons (demo):** `WELCOME10`, `FLAT50`",
+		"description": "# PlumbManager User App API\n\nCustomer-facing mobile app API (`/api/user/*`).\n\n---\n\n## Quick Start\n\n| Step | Action |\n|------|--------|\n| 1 | Import this collection + **PlumbManager User App — Local** environment |\n| 2 | Set `base_url` (default `http://127.0.0.1:8001`) |\n| 3 | Run **01 Auth → Send OTP (Login)** then **Verify OTP (Login)** |\n| 4 | Token auto-saves to `{{token}}` |\n\n---\n\n## Auth Flows\n\n### Login (existing user)\n1. `POST /auth/send-otp` — `{ mobile, type: \"login\" }` → returns `otp`\n2. `POST /auth/verify-otp` — `{ mobile, otp, type: \"login\" }` → returns `token` + `user`\n\nAlternative: `POST /auth/login` — `{ mobile, otp }` (same result)\n\n### Register (new user)\n1. `POST /auth/send-otp` — `{ mobile, type: \"register\" }` → returns `otp`\n2. `POST /auth/verify-otp` — `{ mobile, otp, type: \"register\" }` → returns `{ verified: true }`\n3. `POST /auth/register` — `{ name, mobile, role, email?, address? }` → returns `token` + `user`\n\n---\n\n## Demo Login\n\n| Field | Value |\n|-------|-------|\n| Mobile | `9876500001` |\n| User | Rahul Sharma (seeder) |\n| OTP | Auto-saved from `data.otp` in send-otp response |\n\n---\n\n## Roles\n\n`customer` | `vendor` | `provider`\n\n---\n\n## Response Format\n\n```json\n{ \"success\": true, \"message\": \"...\", \"data\": { ... } }\n```\n\n---\n\n## Auth Header (Protected Routes)\n\n```\nAuthorization: Bearer {{token}}\nAccept: application/json\n```",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
-		{ "key": "base_url", "value": "http://127.0.0.1:8000" },
+		{ "key": "base_url", "value": "http://127.0.0.1:8001" },
 		{ "key": "token", "value": "" },
 		{ "key": "mobile", "value": "9876500001" },
+		{ "key": "register_mobile", "value": "9123456789" },
 		{ "key": "otp", "value": "" },
 		{ "key": "product_id", "value": "1" },
 		{ "key": "service_id", "value": "1" },
+		{ "key": "service_category_id", "value": "1" },
+		{ "key": "service_provider_id", "value": "1" },
 		{ "key": "category_id", "value": "1" },
+		{ "key": "subcategory_id", "value": "1" },
 		{ "key": "address_id", "value": "1" },
 		{ "key": "cart_item_id", "value": "1" },
 		{ "key": "order_id", "value": "1" },
@@ -36,32 +40,104 @@
 	"item": [
 		{
 			"name": "00 — App Screen Flows",
-			"description": "End-to-end flows matching the mobile app screens. Run in order after login.\n\n**Full shopping flow:** ① Home → ② Search → ③ Product → ④ Add Cart → ⑤ Cart → ⑥ Coupon → ⑦ Checkout\n\n**Service booking flow:** ① Home → ② Service → ③ Slots → ④ Create Booking\n\n**Profile flow:** Profile → Edit → Orders / Bookings / Address / Support / FAQs",
+			"description": "End-to-end flows matching the mobile app screens.",
 			"item": [
 				{
 					"name": "Flow A — Login (existing user)",
 					"item": [
 						{
-							"name": "A1 Send OTP",
+							"name": "A1 Send OTP (Login)",
 							"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
 								"const j = pm.response.json();",
-								"if (j.data?.debug_otp) { pm.collectionVariables.set('otp', j.data.debug_otp); pm.environment.set('otp', j.data.debug_otp); }"
+								"if (j.data?.otp) { pm.collectionVariables.set('otp', String(j.data.otp)); pm.environment.set('otp', String(j.data.otp)); console.log('OTP: ' + j.data.otp); }",
+								"pm.test('OK', () => pm.response.to.have.status(200));"
 							]}}],
 							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\"\n}" },
+								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"type\": \"login\"\n}" },
 								"url": "{{base_url}}/api/user/auth/send-otp",
 								"description": "**Screen:** Login → Enter mobile → Get OTP" }
 						},
 						{
-							"name": "A2 Login",
+							"name": "A2 Verify OTP (Login)",
 							"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
 								"const j = pm.response.json();",
-								"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }"
+								"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }",
+								"pm.test('OK', () => pm.response.to.have.status(200));"
 							]}}],
 							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": \"{{otp}}\"\n}" },
-								"url": "{{base_url}}/api/user/auth/login",
-								"description": "**Screen:** Enter OTP → Login" }
+								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"login\"\n}" },
+								"url": "{{base_url}}/api/user/auth/verify-otp",
+								"description": "**Screen:** Enter OTP → Login (returns token)" }
+						}
+					]
+				},
+				{
+					"name": "Flow A2 — Register (new user)",
+					"item": [
+						{
+							"name": "R1 Send OTP (Register)",
+							"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+								"const j = pm.response.json();",
+								"if (j.data?.otp) { pm.collectionVariables.set('otp', String(j.data.otp)); pm.environment.set('otp', String(j.data.otp)); console.log('OTP: ' + j.data.otp); }",
+								"pm.test('OK', () => pm.response.to.have.status(200));"
+							]}}],
+							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{register_mobile}}\",\n  \"type\": \"register\"\n}" },
+								"url": "{{base_url}}/api/user/auth/send-otp",
+								"description": "Use a mobile number that is not already registered." }
+						},
+						{
+							"name": "R2 Verify OTP (Register)",
+							"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+								"const j = pm.response.json();",
+								"pm.test('Verified', () => pm.expect(j.data?.verified).to.eql(true));",
+								"pm.test('OK', () => pm.response.to.have.status(200));"
+							]}}],
+							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{register_mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"register\"\n}" },
+								"url": "{{base_url}}/api/user/auth/verify-otp",
+								"description": "Verifies OTP only. Complete signup in next step." }
+						},
+						{
+							"name": "R3 Register (Customer)",
+							"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+								"const j = pm.response.json();",
+								"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }",
+								"pm.test('OK', () => pm.response.to.have.status(201));"
+							]}}],
+							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"name\": \"Lois Buily\",\n  \"mobile\": \"{{register_mobile}}\",\n  \"email\": \"loisbecket@gmail.com\",\n  \"address\": \"12, abc colony, indore\",\n  \"role\": \"customer\"\n}" },
+								"url": "{{base_url}}/api/user/auth/register",
+								"description": "Requires OTP verified in R2. Returns token + user." }
+						},
+						{
+							"name": "R4 Register (Provider)",
+							"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+								"const j = pm.response.json();",
+								"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }",
+								"pm.test('OK', () => pm.response.to.have.status(201));"
+							]}}],
+							"request": { "auth": { "type": "noauth" }, "method": "POST",
+								"body": { "mode": "formdata", "formdata": [
+									{ "key": "name", "value": "Arjun Provider", "type": "text" },
+									{ "key": "mobile", "value": "{{register_provider_mobile}}", "type": "text" },
+									{ "key": "email", "value": "arjun.provider@example.com", "type": "text" },
+									{ "key": "address", "value": "45, service colony, Indore", "type": "text" },
+									{ "key": "role", "value": "provider", "type": "text" },
+									{ "key": "skills[0]", "value": "Pipe Repair", "type": "text" },
+									{ "key": "skills[1]", "value": "Leak Fixing", "type": "text" },
+									{ "key": "experience", "value": "5", "type": "text" },
+									{ "key": "account_number", "value": "123456789012", "type": "text" },
+									{ "key": "account_holder_name", "value": "Arjun Provider", "type": "text" },
+									{ "key": "ifsc_code", "value": "SBIN0001234", "type": "text" },
+									{ "key": "bank_name", "value": "State Bank of India", "type": "text" },
+									{ "key": "account_type", "value": "savings", "type": "text" },
+									{ "key": "aadhar_front", "type": "file", "src": [], "description": "Aadhar front image" },
+									{ "key": "aadhar_back", "type": "file", "src": [], "description": "Aadhar back image" },
+									{ "key": "pan_card", "type": "file", "src": [], "description": "PAN card image" }
+								] },
+								"url": "{{base_url}}/api/user/auth/register",
+								"description": "Multipart register when role=provider. Verify OTP for register_provider_mobile first. Provider status starts as pending." }
 						}
 					]
 				},
@@ -142,11 +218,34 @@
 								"description": "**Screen:** Reschedule / date picker" }
 						},
 						{
+							"name": "D2b Promo Code List",
+							"request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/promo-codes",
+								"description": "**Screen:** Promo code picker / list" }
+						},
+						{
+							"name": "D2c Apply Promo Code",
+							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"service_id\": 3,\n  \"promo_code\": \"SERVICE10\"\n}" },
+								"url": "{{base_url}}/api/user/promo-codes/apply",
+								"description": "**Screen:** Apply promo before booking — returns subtotal, discount, total" }
+						},
+						{
 							"name": "D3 Create Booking",
-							"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-								"body": { "mode": "raw", "raw": "{\n  \"service_id\": {{service_id}},\n  \"address\": \"123, abc colony, Indore\",\n  \"scheduled_at\": \"2026-06-20 10:00:00\"\n}" },
+							"request": { "method": "POST",
+								"body": { "mode": "formdata", "formdata": [
+									{ "key": "service_id", "value": "3", "type": "text", "description": "Shower Installation (>= 100 for SERVICE10)" },
+									{ "key": "service_provider_id", "value": "2", "type": "text", "description": "Sunil Pipe Expert" },
+									{ "key": "schedule_date", "value": "2026-06-20", "type": "text" },
+									{ "key": "schedule_time", "value": "10:00", "type": "text" },
+									{ "key": "address", "value": "123, abc colony, Indore", "type": "text" },
+									{ "key": "promo_code", "value": "SERVICE10", "type": "text" },
+									{ "key": "payment_method", "value": "razorpay", "type": "text", "description": "razorpay or cod" },
+									{ "key": "transaction_id", "value": "pay_RzpBooking123", "type": "text", "description": "Required when payment_method=razorpay" },
+									{ "key": "notes", "value": "Kitchen leak under sink", "type": "text" },
+									{ "key": "issue_images", "type": "file", "src": [], "description": "Upload up to 5 issue photos" }
+								] },
 								"url": "{{base_url}}/api/user/bookings",
-								"description": "**Screen:** Book service confirmation" }
+								"description": "**Screen:** Book service — provider, date/time, issue images, promo code" }
 						}
 					]
 				},
@@ -194,41 +293,108 @@
 		},
 		{
 			"name": "01 — Authentication",
-			"description": "OTP-based login and registration. Public endpoints — no token required.",
+			"description": "OTP-based login and registration.\n\n**Login:** send-otp (`type: login`) → verify-otp (`type: login`)\n\n**Register:** send-otp (`type: register`) → verify-otp (`type: register`) → register",
 			"item": [
 				{
-					"name": "Send OTP",
+					"name": "Send OTP (Login)",
 					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
 						"const j = pm.response.json();",
-						"if (j.data?.debug_otp) { pm.collectionVariables.set('otp', j.data.debug_otp); pm.environment.set('otp', j.data.debug_otp); console.log('OTP: ' + j.data.debug_otp); }",
+						"if (j.data?.otp) { pm.collectionVariables.set('otp', String(j.data.otp)); pm.environment.set('otp', String(j.data.otp)); console.log('OTP: ' + j.data.otp); }",
 						"pm.test('OK', () => pm.response.to.have.status(200));"
 					]}}],
 					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\"\n}" },
+						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"type\": \"login\"\n}" },
 						"url": "{{base_url}}/api/user/auth/send-otp",
-						"description": "**POST** `/api/user/auth/send-otp`\n\n**Body:** `{ \"mobile\": \"9876500001\" }`\n\nSends 6-digit OTP. In debug mode, returns `debug_otp` in response." }
+						"description": "**POST** `/api/user/auth/send-otp`\n\n**Body:** `{ \"mobile\": \"9876500001\", \"type\": \"login\" }`\n\nReturns 4-digit OTP in `data.otp`. Mobile must already be registered." }
 				},
 				{
-					"name": "Login (Verify OTP)",
+					"name": "Send OTP (Register)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"const j = pm.response.json();",
+						"if (j.data?.otp) { pm.collectionVariables.set('otp', String(j.data.otp)); pm.environment.set('otp', String(j.data.otp)); console.log('OTP: ' + j.data.otp); }",
+						"pm.test('OK', () => pm.response.to.have.status(200));"
+					]}}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{register_mobile}}\",\n  \"type\": \"register\"\n}" },
+						"url": "{{base_url}}/api/user/auth/send-otp",
+						"description": "**POST** `/api/user/auth/send-otp`\n\n**Body:** `{ \"mobile\": \"9123456789\", \"type\": \"register\" }`\n\nReturns 4-digit OTP. Mobile must NOT be registered yet." }
+				},
+				{
+					"name": "Verify OTP (Login)",
 					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
 						"const j = pm.response.json();",
 						"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }",
 						"pm.test('OK', () => pm.response.to.have.status(200));"
 					]}}],
 					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": \"{{otp}}\"\n}" },
-						"url": "{{base_url}}/api/user/auth/login",
-						"description": "**POST** `/api/user/auth/login`\n\nReturns `token` if user exists, else `{ needs_registration: true }`." }
+						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"login\"\n}" },
+						"url": "{{base_url}}/api/user/auth/verify-otp",
+						"description": "**POST** `/api/user/auth/verify-otp`\n\n**Body:** `{ \"mobile\", \"otp\", \"type\": \"login\" }`\n\nReturns `token` + `user` on success (same as login)." }
 				},
 				{
-					"name": "Register",
+					"name": "Verify OTP (Register)",
 					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-						"const j = pm.response.json(); if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }"
+						"const j = pm.response.json();",
+						"pm.test('Verified', () => pm.expect(j.data?.verified).to.eql(true));",
+						"pm.test('OK', () => pm.response.to.have.status(200));"
 					]}}],
 					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n  \"name\": \"Lois Buily\",\n  \"mobile\": \"9123456789\",\n  \"email\": \"loisbecket@gmail.com\",\n  \"address\": \"12, abc colony, indore\"\n}" },
+						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{register_mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"register\"\n}" },
+						"url": "{{base_url}}/api/user/auth/verify-otp",
+						"description": "**POST** `/api/user/auth/verify-otp`\n\n**Body:** `{ \"mobile\", \"otp\", \"type\": \"register\" }`\n\nReturns `{ verified: true }`. Then call **Register** to complete signup." }
+				},
+				{
+					"name": "Login",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"const j = pm.response.json();",
+						"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }",
+						"pm.test('OK', () => pm.response.to.have.status(200));"
+					]}}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}}\n}" },
+						"url": "{{base_url}}/api/user/auth/login",
+						"description": "**POST** `/api/user/auth/login`\n\n**Body:** `{ \"mobile\", \"otp\" }`\n\nAlternative to Verify OTP (Login). OTP can be number or string." }
+				},
+				{
+					"name": "Register (Customer)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"const j = pm.response.json();",
+						"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }",
+						"pm.test('OK', () => pm.response.to.have.status(201));"
+					]}}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n  \"name\": \"Lois Buily\",\n  \"mobile\": \"{{register_mobile}}\",\n  \"email\": \"loisbecket@gmail.com\",\n  \"address\": \"12, abc colony, indore\",\n  \"role\": \"customer\"\n}" },
 						"url": "{{base_url}}/api/user/auth/register",
-						"description": "**POST** `/api/user/auth/register`\n\nRequires OTP verified first via Send OTP.\n\n**Fields:** name, mobile (unique), email (optional), address (optional)" }
+						"description": "**POST** `/api/user/auth/register`\n\nRequires OTP verified first.\n\n**Customer/vendor:** JSON body with name, mobile, role, email?, address?\n\n**Provider:** use **Register (Provider)** — multipart with skills, experience, KYC images, bank details." }
+				},
+				{
+					"name": "Register (Provider)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"const j = pm.response.json();",
+						"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }",
+						"pm.test('OK', () => pm.response.to.have.status(201));"
+					]}}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST",
+						"body": { "mode": "formdata", "formdata": [
+							{ "key": "name", "value": "Arjun Provider", "type": "text" },
+							{ "key": "mobile", "value": "{{register_provider_mobile}}", "type": "text" },
+							{ "key": "email", "value": "arjun.provider@example.com", "type": "text" },
+							{ "key": "address", "value": "45, service colony, Indore", "type": "text" },
+							{ "key": "role", "value": "provider", "type": "text" },
+							{ "key": "skills[0]", "value": "Pipe Repair", "type": "text" },
+							{ "key": "skills[1]", "value": "Leak Fixing", "type": "text" },
+							{ "key": "experience", "value": "5", "type": "text" },
+							{ "key": "account_number", "value": "123456789012", "type": "text" },
+							{ "key": "account_holder_name", "value": "Arjun Provider", "type": "text" },
+							{ "key": "ifsc_code", "value": "SBIN0001234", "type": "text" },
+							{ "key": "bank_name", "value": "State Bank of India", "type": "text" },
+							{ "key": "account_type", "value": "savings", "type": "text", "description": "savings or current" },
+							{ "key": "aadhar_front", "type": "file", "src": [] },
+							{ "key": "aadhar_back", "type": "file", "src": [] },
+							{ "key": "pan_card", "type": "file", "src": [] }
+						] },
+						"url": "{{base_url}}/api/user/auth/register",
+						"description": "**POST** `/api/user/auth/register` (multipart)\n\nWhen `role=provider`, extra fields required:\n- skills[] (array)\n- experience (years)\n- aadhar_front, aadhar_back, pan_card (images)\n- account_number, account_holder_name, ifsc_code, bank_name, account_type\n\nReturns provider profile with status `pending`." }
 				},
 				{
 					"name": "Logout",
@@ -246,13 +412,44 @@
 				{ "name": "Banners", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/banners" } },
 				{ "name": "Product Categories", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/categories" } },
 				{ "name": "Products List", "request": { "auth": { "type": "noauth" }, "method": "GET",
-					"url": { "raw": "{{base_url}}/api/user/products?category_id={{category_id}}&search=&per_page=15",
-						"query": [{ "key": "category_id", "value": "{{category_id}}" }, { "key": "search", "value": "" }, { "key": "per_page", "value": "15" }] } } },
-				{ "name": "Product Detail", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/products/{{product_id}}" } },
+					"url": { "raw": "{{base_url}}/api/user/products?category_id={{category_id}}&subcategory_id={{subcategory_id}}&search=&per_page=15",
+						"query": [
+							{ "key": "category_id", "value": "{{category_id}}", "description": "Optional — filter by category" },
+							{ "key": "subcategory_id", "value": "{{subcategory_id}}", "description": "Optional — filter by subcategory" },
+							{ "key": "search", "value": "" },
+							{ "key": "per_page", "value": "15" }
+						] },
+					"description": "Filter products by category_id, subcategory_id, and/or search term." } },
+				{ "name": "Product Detail", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/products/{{product_id}}",
+					"description": "Returns discount, images[], reviews[], rating, vendor details." } },
+				{ "name": "Product Reviews", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/products/{{product_id}}/reviews" } },
+				{ "name": "Rate & Review Product", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Great product!\",\n  \"order_id\": {{order_id}}\n}" },
+					"url": "{{base_url}}/api/user/products/{{product_id}}/reviews",
+					"description": "Auth required. One review per user per product." } },
+				{ "name": "App Config", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/config",
+					"description": "Combined FAQs + Privacy Policy + Terms & Conditions + app settings." } },
 				{ "name": "Service Categories", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/service-categories" } },
 				{ "name": "Services List", "request": { "auth": { "type": "noauth" }, "method": "GET",
 					"url": { "raw": "{{base_url}}/api/user/services?category_id=&per_page=15", "query": [{ "key": "category_id", "value": "" }, { "key": "per_page", "value": "15" }] } } },
 				{ "name": "Service Detail", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/services/{{service_id}}" } },
+				{ "name": "Service Providers List", "request": { "auth": { "type": "noauth" }, "method": "GET",
+					"url": { "raw": "{{base_url}}/api/user/service-providers?category_id={{service_category_id}}&search=&per_page=15",
+						"query": [
+							{ "key": "category_id", "value": "{{service_category_id}}", "description": "Filter by service category" },
+							{ "key": "search", "value": "" },
+							{ "key": "per_page", "value": "15" }
+						] },
+					"description": "List approved providers. Filter by service category_id." } },
+				{ "name": "Service Provider Detail", "request": { "auth": { "type": "noauth" }, "method": "GET",
+					"url": "{{base_url}}/api/user/service-providers/{{service_provider_id}}",
+					"description": "Returns provider info, all services offered, rating & reviews." } },
+				{ "name": "Service Provider Reviews", "request": { "auth": { "type": "noauth" }, "method": "GET",
+					"url": "{{base_url}}/api/user/service-providers/{{service_provider_id}}/reviews" } },
+				{ "name": "Rate Service Provider", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Great service!\",\n  \"service_booking_id\": {{booking_id}}\n}" },
+					"url": "{{base_url}}/api/user/service-providers/{{service_provider_id}}/reviews",
+					"description": "Auth required. One review per user per provider." } },
 				{ "name": "Search", "request": { "auth": { "type": "noauth" }, "method": "GET",
 					"url": { "raw": "{{base_url}}/api/user/search?q=pipe", "query": [{ "key": "q", "value": "pipe", "description": "Required" }] },
 					"description": "Unified search — returns products[] and services[]" } }
@@ -264,7 +461,14 @@
 				{ "name": "Get Profile", "request": { "method": "GET", "url": "{{base_url}}/api/user/profile" } },
 				{ "name": "Update Profile", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }],
 					"body": { "mode": "raw", "raw": "{\n  \"name\": \"Rahul Sharma\",\n  \"mobile\": \"9876500001\",\n  \"email\": \"rahul@gmail.com\",\n  \"address\": \"123, abc colony, Delhi\"\n}" },
-					"url": "{{base_url}}/api/user/profile" } }
+					"url": "{{base_url}}/api/user/profile" } },
+				{ "name": "Update Profile Image", "request": { "method": "POST",
+					"body": { "mode": "formdata", "formdata": [
+						{ "key": "name", "value": "Rahul Sharma", "type": "text" },
+						{ "key": "profile_image", "type": "file", "src": [] }
+					] },
+					"url": "{{base_url}}/api/user/profile",
+					"description": "Use multipart/form-data. Field: profile_image or avatar (max 2MB)." } }
 			]
 		},
 		{
@@ -286,31 +490,40 @@
 			"item": [
 				{ "name": "Get Cart", "request": { "method": "GET", "url": "{{base_url}}/api/user/cart" } },
 				{ "name": "Add to Cart", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-					"body": { "mode": "raw", "raw": "{\n  \"product_id\": {{product_id}},\n  \"quantity\": 1\n}" }, "url": "{{base_url}}/api/user/cart" } },
+					"body": { "mode": "raw", "raw": "{\n  \"product_id\": {{product_id}},\n  \"quantity\": 1\n}" },
+					"url": "{{base_url}}/api/user/cart",
+					"description": "Single vendor only — cannot mix products from different vendors." } },
 				{ "name": "Update Quantity", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }],
 					"body": { "mode": "raw", "raw": "{\n  \"quantity\": 2\n}" }, "url": "{{base_url}}/api/user/cart/{{cart_item_id}}" } },
 				{ "name": "Remove Item", "request": { "method": "DELETE", "url": "{{base_url}}/api/user/cart/{{cart_item_id}}" } },
+				{ "name": "Coupon List", "request": { "method": "GET", "url": "{{base_url}}/api/user/coupons",
+					"description": "Active order coupons for cart/checkout. Includes is_applicable and estimated_discount based on current cart subtotal. Demo: WELCOME10 (10%), FLAT50 (₹50 off)" } },
 				{ "name": "Apply Coupon", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
 					"body": { "mode": "raw", "raw": "{\n  \"code\": \"WELCOME10\"\n}" }, "url": "{{base_url}}/api/user/cart/apply-coupon",
-					"description": "Demo codes: WELCOME10 (10%), FLAT50 (₹50 off)" } },
+					"description": "Order coupons only. Demo codes: WELCOME10 (10%), FLAT50 (₹50 off)" } },
 				{ "name": "Payment Methods", "request": { "method": "GET", "url": "{{base_url}}/api/user/checkout/payment-methods" } },
 				{ "name": "Place Order (COD)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
 					"body": { "mode": "raw", "raw": "{\n  \"address_id\": {{address_id}},\n  \"payment_method\": \"cod\",\n  \"coupon_code\": \"WELCOME10\",\n  \"notes\": \"Deliver before 6 PM\"\n}" },
 					"url": "{{base_url}}/api/user/checkout/place-order" } },
 				{ "name": "Place Order (Razorpay)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-					"body": { "mode": "raw", "raw": "{\n  \"address_id\": {{address_id}},\n  \"payment_method\": \"razorpay\"\n}" },
+					"body": { "mode": "raw", "raw": "{\n  \"address_id\": {{address_id}},\n  \"payment_method\": \"razorpay\",\n  \"transaction_id\": \"pay_RzpTest123456\"\n}" },
 					"url": "{{base_url}}/api/user/checkout/place-order",
-					"description": "Returns razorpay order_id + key for mobile SDK" } }
+					"description": "transaction_id required for razorpay payments." } }
 			]
 		},
 		{
 			"name": "06 — Orders",
 			"item": [
 				{ "name": "Order History (All)", "request": { "method": "GET",
-					"url": { "raw": "{{base_url}}/api/user/orders?status=all", "query": [{ "key": "status", "value": "all", "description": "all|processing|out_for_delivery|delivered|cancelled" }] } } },
+					"url": { "raw": "{{base_url}}/api/user/orders?status=all", "query": [{ "key": "status", "value": "all", "description": "all includes product orders + bulk orders" }] } } },
+				{ "name": "Order History (Quotation)", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/user/orders?status=quotation", "query": [{ "key": "status", "value": "quotation", "description": "Bulk orders awaiting quotation acceptance" }] } } },
 				{ "name": "Order History (Processing)", "request": { "method": "GET",
 					"url": { "raw": "{{base_url}}/api/user/orders?status=processing", "query": [{ "key": "status", "value": "processing" }] } } },
-				{ "name": "Order Detail", "request": { "method": "GET", "url": "{{base_url}}/api/user/orders/{{order_id}}" } },
+				{ "name": "Order Detail", "request": { "method": "GET", "url": "{{base_url}}/api/user/orders/{{order_id}}",
+					"description": "Returns vendor, payment_status, tracking, tracking_timeline, invoice_url." } },
+				{ "name": "Download Invoice", "request": { "method": "GET", "url": "{{base_url}}/api/user/orders/{{order_id}}/invoice",
+					"description": "Downloads PDF invoice. invoice_url also returned in order response." } },
 				{ "name": "Cancel Order", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
 					"body": { "mode": "raw", "raw": "{\n  \"reason\": \"Ordered by mistake\"\n}" },
 					"url": "{{base_url}}/api/user/orders/{{order_id}}/cancel",
@@ -320,22 +533,71 @@
 		{
 			"name": "07 — Bookings",
 			"item": [
+				{ "name": "Promo Code List", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/promo-codes",
+					"description": "Active promo codes for service booking." } },
+				{ "name": "Apply Promo Code", "request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"service_id\": 3,\n  \"promo_code\": \"SERVICE10\"\n}" },
+					"url": "{{base_url}}/api/user/promo-codes/apply",
+					"description": "Booking promo codes only. Demo: SERVICE10 (10%), BOOK50 (₹50 off)" } },
+				{ "name": "Booking Payment Methods", "request": { "method": "GET", "url": "{{base_url}}/api/user/bookings/payment-methods",
+					"description": "razorpay or cod (pay on service)" } },
 				{ "name": "Booking History (All)", "request": { "method": "GET",
-					"url": { "raw": "{{base_url}}/api/user/bookings?status=all", "query": [{ "key": "status", "value": "all", "description": "all|processing|confirmed|completed|cancelled" }] } } },
-				{ "name": "Create Booking", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-					"body": { "mode": "raw", "raw": "{\n  \"service_id\": {{service_id}},\n  \"address\": \"123, abc colony, Indore\",\n  \"scheduled_at\": \"2026-06-20 10:00:00\",\n  \"notes\": \"Kitchen leak\"\n}" },
-					"url": "{{base_url}}/api/user/bookings" } },
+					"url": { "raw": "{{base_url}}/api/user/bookings?status=all", "query": [{ "key": "status", "value": "all", "description": "all|processing|confirmed|completed|cancelled|reschedule" }] } } },
+				{ "name": "Booking History (Rescheduled)", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/user/bookings?status=reschedule", "query": [{ "key": "status", "value": "reschedule" }] } } },
+				{ "name": "Create Booking", "request": { "method": "POST",
+					"body": { "mode": "formdata", "formdata": [
+						{ "key": "service_id", "value": "3", "type": "text", "description": "Use service with price >= promo min (SERVICE10 needs 100+)" },
+						{ "key": "service_provider_id", "value": "2", "type": "text" },
+						{ "key": "schedule_date", "value": "2026-06-20", "type": "text" },
+						{ "key": "schedule_time", "value": "10:00", "type": "text" },
+						{ "key": "address", "value": "123, abc colony, Indore", "type": "text" },
+						{ "key": "promo_code", "value": "SERVICE10", "type": "text" },
+						{ "key": "payment_method", "value": "cod", "type": "text", "description": "razorpay requires transaction_id" },
+						{ "key": "notes", "value": "Kitchen leak", "type": "text" },
+						{ "key": "issue_images", "type": "file", "src": [], "description": "Optional — up to 5 images" }
+					] },
+					"url": "{{base_url}}/api/user/bookings",
+					"description": "Multipart: payment_method (razorpay|cod), transaction_id required for razorpay." } },
 				{ "name": "Booking Detail", "request": { "method": "GET", "url": "{{base_url}}/api/user/bookings/{{booking_id}}" } },
 				{ "name": "Available Slots", "request": { "method": "GET",
 					"url": { "raw": "{{base_url}}/api/user/bookings/available-slots?date=2026-06-20", "query": [{ "key": "date", "value": "2026-06-20" }] } } },
-				{ "name": "Cancel Booking", "request": { "method": "POST", "url": "{{base_url}}/api/user/bookings/{{booking_id}}/cancel" } },
+				{ "name": "Cancel Booking", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"reason\": \"Change of plans\"\n}" },
+					"url": "{{base_url}}/api/user/bookings/{{booking_id}}/cancel" } },
+				{ "name": "Rate Provider (Booking Review)", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Great service!\"\n}" },
+					"url": "{{base_url}}/api/user/bookings/{{booking_id}}/review",
+					"description": "Only for completed bookings." } },
 				{ "name": "Reschedule Booking", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-					"body": { "mode": "raw", "raw": "{\n  \"scheduled_at\": \"2026-06-25 14:00:00\"\n}" },
+					"body": { "mode": "raw", "raw": "{\n  \"schedule_date\": \"2026-06-25\",\n  \"schedule_time\": \"14:00\"\n}" },
 					"url": "{{base_url}}/api/user/bookings/{{booking_id}}/reschedule" } }
 			]
 		},
 		{
-			"name": "08 — Support & CMS",
+			"name": "08 — Bulk Orders",
+			"item": [
+				{ "name": "Submit Bulk Order", "request": { "method": "POST",
+					"body": { "mode": "formdata", "formdata": [
+						{ "key": "full_name", "value": "Rahul Sharma", "type": "text" },
+						{ "key": "mobile", "value": "{{mobile}}", "type": "text" },
+						{ "key": "note", "value": "Need bulk plumbing materials for site project", "type": "text" },
+						{ "key": "file", "type": "file", "src": [], "description": "pdf, jpg, jpeg, xls, xlsx, csv" }
+					] },
+					"url": "{{base_url}}/api/user/bulk-orders" } },
+				{ "name": "Bulk Order List", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/user/bulk-orders?status=all", "query": [{ "key": "status", "value": "all", "description": "all|submitted|quotation|approved|rejected" }] } } },
+				{ "name": "Bulk Order Detail", "request": { "method": "GET", "url": "{{base_url}}/api/user/bulk-orders/{{bulk_order_id}}" } },
+				{ "name": "Accept Quotation", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"quotation_id\": {{quotation_id}},\n  \"payment_method\": \"razorpay\",\n  \"transaction_id\": \"pay_RzpBulk123\"\n}" },
+					"url": "{{base_url}}/api/user/bulk-orders/quotations/accept" } },
+				{ "name": "Reject Quotation", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"quotation_id\": {{quotation_id}},\n  \"reason\": \"Price too high\"\n}" },
+					"url": "{{base_url}}/api/user/bulk-orders/quotations/reject" } }
+			]
+		},
+		{
+			"name": "09 — Support & CMS",
 			"item": [
 				{ "name": "List Support Tickets", "request": { "method": "GET", "url": "{{base_url}}/api/user/tickets" } },
 				{ "name": "Create Support Ticket", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -348,7 +610,7 @@
 			]
 		},
 		{
-			"name": "09 — Notifications",
+			"name": "10 — Notifications",
 			"item": [
 				{ "name": "List Notifications", "request": { "method": "GET", "url": "{{base_url}}/api/user/notifications",
 					"description": "Returns unread_count + paginated items" } },

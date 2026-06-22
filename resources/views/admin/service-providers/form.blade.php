@@ -27,6 +27,8 @@
             </div>
             <div class="sm:col-span-2">@include('admin.partials.form-field', ['label' => 'Skills', 'name' => 'skills', 'limit' => 'skills', 'value' => old('skills', is_array($serviceProvider->skills) ? implode(', ', $serviceProvider->skills) : ''), 'placeholder' => 'Leak Repair, Pipe Fitting...', 'hint' => 'Separate with commas · max '.config('admin.limits.skills').' characters'])</div>
             <div class="sm:col-span-2">@include('admin.partials.form-field', ['label' => 'Service Area', 'name' => 'service_area', 'type' => 'textarea', 'limit' => 'service_area', 'value' => old('service_area', $serviceProvider->service_area), 'rows' => 2])</div>
+            <div class="sm:col-span-2"><label class="admin-label">Profile Photo</label><input type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp" class="admin-input !h-auto !py-2.5"></div>
+            <div class="sm:col-span-2"><label class="admin-label">Work Gallery Images</label><input type="file" name="gallery_images[]" accept=".jpg,.jpeg,.png,.webp" multiple class="admin-input !h-auto !py-2.5"></div>
             <div class="sm:col-span-2"><label class="admin-label">ID Proof Document</label><input type="file" name="id_document" accept=".pdf,.jpg,.jpeg,.png" class="admin-input !h-auto !py-2.5"></div>
         </div>
 

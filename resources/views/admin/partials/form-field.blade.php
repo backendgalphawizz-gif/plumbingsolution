@@ -10,7 +10,7 @@
     'placeholder' => null,
     'rows' => 3,
     'class' => '',
-    'attributes' => [],
+    'inputAttributes' => [],
 ])
 
     @php
@@ -18,10 +18,11 @@
     $inputId = 'field-' . str_replace(['[', ']'], ['-', ''], $name);
     $hasError = $errors->has($name);
     $resolvedValue = $value ?? old($name);
-    if ($type === 'tel' && empty($attributes['pattern'])) {
-        $attributes['pattern'] = '[6-9][0-9]{9}';
-        $attributes['inputmode'] = 'numeric';
-        $attributes['title'] = '10-digit mobile number starting with 6-9';
+    $inputAttributes = is_array($inputAttributes) ? $inputAttributes : [];
+    if ($type === 'tel' && empty($inputAttributes['pattern'])) {
+        $inputAttributes['pattern'] = '[6-9][0-9]{9}';
+        $inputAttributes['inputmode'] = 'numeric';
+        $inputAttributes['title'] = '10-digit mobile number starting with 6-9';
     }
 @endphp
 
@@ -47,7 +48,7 @@
             @if($maxLength) maxlength="{{ $maxLength }}" @endif
             @if($placeholder) placeholder="{{ $placeholder }}" @endif
             class="admin-input {{ $class }}"
-            @foreach($attributes as $attrKey => $attrVal) {{ $attrKey }}="{{ $attrVal }}" @endforeach
+            @foreach($inputAttributes as $attrKey => $attrVal) {{ $attrKey }}="{{ $attrVal }}" @endforeach
         >{{ $resolvedValue }}</textarea>
     @else
         <input
@@ -59,7 +60,7 @@
             @if($maxLength) maxlength="{{ $maxLength }}" @endif
             @if($placeholder) placeholder="{{ $placeholder }}" @endif
             class="admin-input {{ $class }}"
-            @foreach($attributes as $attrKey => $attrVal) {{ $attrKey }}="{{ $attrVal }}" @endforeach
+            @foreach($inputAttributes as $attrKey => $attrVal) {{ $attrKey }}="{{ $attrVal }}" @endforeach
         >
     @endif
 

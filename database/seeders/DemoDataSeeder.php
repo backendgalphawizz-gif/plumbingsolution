@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\BookingStatus;
+use App\Enums\UserRole;
 use App\Enums\NotificationType;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
@@ -96,6 +97,7 @@ class DemoDataSeeder extends Seeder
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'mobile' => $data['mobile'],
+                'role' => UserRole::Customer,
                 'password' => Hash::make('password'),
                 'address' => fake()->address(),
                 'is_blocked' => $data['is_blocked'] ?? false,

@@ -17,7 +17,40 @@
         <div><dt class="admin-label">Experience</dt><dd class="mt-1">{{ $serviceProvider->experience_years }} years</dd></div>
         <div class="sm:col-span-2"><dt class="admin-label">Service Area</dt><dd class="mt-1">{{ $serviceProvider->service_area ?? '—' }}</dd></div>
         <div class="sm:col-span-2"><dt class="admin-label">Skills</dt><dd class="mt-1">{{ implode(', ', $serviceProvider->skills ?? []) ?: '—' }}</dd></div>
+        @if($serviceProvider->account_number)
+            <div class="sm:col-span-2 border-t border-slate-100 pt-4"><dt class="admin-label mb-2">Bank Details</dt></div>
+            <div><dt class="admin-label">Account Holder</dt><dd class="mt-1">{{ $serviceProvider->account_holder_name }}</dd></div>
+            <div><dt class="admin-label">Account Number</dt><dd class="mt-1">{{ $serviceProvider->account_number }}</dd></div>
+            <div><dt class="admin-label">IFSC Code</dt><dd class="mt-1">{{ $serviceProvider->ifsc_code }}</dd></div>
+            <div><dt class="admin-label">Bank Name</dt><dd class="mt-1">{{ $serviceProvider->bank_name }}</dd></div>
+            <div><dt class="admin-label">Account Type</dt><dd class="mt-1 capitalize">{{ $serviceProvider->account_type }}</dd></div>
+        @endif
     </dl>
+    @if($serviceProvider->documents->isNotEmpty())
+        <div class="mb-6 border-t border-slate-100 pt-5">
+            <h3 class="admin-label mb-3">Documents</h3>
+            <div class="grid gap-3 sm:grid-cols-3">
+                @foreach($serviceProvider->documents as $document)
+                    <a href="{{ asset('storage/'.$document->file_path) }}" target="_blank" class="rounded-lg border border-slate-200 p-3 text-sm font-medium text-emerald-700 hover:bg-emerald-50">
+                        {{ str_replace('_', ' ', ucwords($document->document_type, '_')) }}
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    @endif
+    @if($serviceProvider->services->isNotEmpty())
+        <div class="mb-6 border-t border-slate-100 pt-5">
+            <h3 class="admin-label mb-3">Services ({{ $serviceProvider->services->count() }})</h3>
+            <div class="space-y-2">
+                @foreach($serviceProvider->services as $service)
+                    <a href="{{ route('admin.services.show', $service) }}" class="flex items-center justify-between rounded-lg border border-slate-200 p-3 text-sm hover:bg-slate-50">
+                        <span class="font-medium">{{ $service->name }}</span>
+                        <span class="font-semibold text-emerald-700">₹{{ number_format($service->pivot->price ?? $service->starting_price, 2) }}</span>
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    @endif
     <div class="flex flex-wrap gap-2 border-t border-slate-100 pt-5">
         <a href="{{ route('admin.service-providers.edit', $serviceProvider) }}" class="btn btn-secondary btn-sm">Edit</a>
         @if($serviceProvider->status->value === 'pending')

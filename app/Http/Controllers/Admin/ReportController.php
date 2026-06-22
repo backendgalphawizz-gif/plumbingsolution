@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\ServiceBooking;
+use App\Support\AdminValidation as V;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -16,6 +17,10 @@ class ReportController extends Controller
 {
     public function index(Request $request): View
     {
+        if ($request->get('filter') === 'custom') {
+            $request->validate(V::customDateRangeRules());
+        }
+
         [$start, $end, $filter] = $this->range($request);
 
         $sales = Order::whereBetween('created_at', [$start, $end])

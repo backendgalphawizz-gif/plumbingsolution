@@ -1,0 +1,491 @@
+{
+	"info": {
+		"_postman_id": "plumbmanager-vendor-api-v1",
+		"name": "PlumbManager — Vendor App API",
+		"description": "# PlumbManager Vendor App API\n\nPartner/vendor mobile app API (`/api/v2/*`).\n\n---\n\n## Quick Start\n\n| Step | Action |\n|------|--------|\n| 1 | Import this collection + **PlumbManager Vendor App — Local** environment |\n| 2 | Set `base_url` (default `http://127.0.0.1:8001`) |\n| 3 | Run **01 Auth → Send OTP (Vendor Login)** then **Verify OTP (Vendor Login)** |\n| 4 | Token auto-saves to `{{token}}` |\n\n---\n\n## Auth Flows\n\n### Login (existing vendor)\n1. `POST /auth/send-otp` — `{ mobile, type: \"vendor_login\" }` → returns `otp`\n2. `POST /auth/verify-otp` — `{ mobile, otp, type: \"vendor_login\" }` → returns `token` + `user`\n\nAlternative: `POST /auth/login` — `{ mobile, otp }`\n\n### Register (new vendor)\n1. `POST /auth/send-otp` — `{ mobile, type: \"vendor_register\" }`\n2. `POST /auth/verify-otp` — `{ mobile, otp, type: \"vendor_register\" }` → `{ verified: true }`\n3. `POST /auth/register` — multipart with owner + shop + bank details\n\n---\n\n## OTP Types\n\n| App | Login | Register |\n|-----|-------|----------|\n| Vendor | `vendor_login` | `vendor_register` |\n\n---\n\n## Response Format\n\n```json\n{ \"success\": true, \"message\": \"...\", \"data\": { ... } }\n```\n\n---\n\n## Auth Header (Protected Routes)\n\n```\nAuthorization: Bearer {{token}}\nAccept: application/json\n```",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "base_url", "value": "http://127.0.0.1:8001" },
+		{ "key": "token", "value": "" },
+		{ "key": "mobile", "value": "9512345872" },
+		{ "key": "register_mobile", "value": "9512345999" },
+		{ "key": "otp", "value": "" },
+		{ "key": "order_id", "value": "1" },
+		{ "key": "product_id", "value": "1" },
+		{ "key": "category_id", "value": "1" },
+		{ "key": "subcategory_id", "value": "1" }
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": ["pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });"]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "00 — App Screen Flows",
+			"description": "End-to-end flows matching the Partner Dashboard mobile app screens.",
+			"item": [
+				{
+					"name": "Flow A — Vendor Login",
+					"item": [
+						{
+							"name": "A1 Send OTP (Vendor Login)",
+							"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+								"const j = pm.response.json();",
+								"if (j.data?.otp) { pm.collectionVariables.set('otp', String(j.data.otp)); pm.environment.set('otp', String(j.data.otp)); console.log('OTP: ' + j.data.otp); }",
+								"pm.test('OK', () => pm.response.to.have.status(200));"
+							]}}],
+							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"type\": \"vendor_login\"\n}" },
+								"url": "{{base_url}}/api/v2/auth/send-otp",
+								"description": "**Screen:** Login → Enter mobile → Get OTP" }
+						},
+						{
+							"name": "A2 Verify OTP (Vendor Login)",
+							"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+								"const j = pm.response.json();",
+								"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }",
+								"pm.test('OK', () => pm.response.to.have.status(200));"
+							]}}],
+							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"vendor_login\"\n}" },
+								"url": "{{base_url}}/api/v2/auth/verify-otp",
+								"description": "**Screen:** Enter OTP → Login (returns token)" }
+						}
+					]
+				},
+				{
+					"name": "Flow B — Vendor Register (3 screens)",
+					"item": [
+						{
+							"name": "B1 Send OTP (Vendor Register)",
+							"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+								"const j = pm.response.json();",
+								"if (j.data?.otp) { pm.collectionVariables.set('otp', String(j.data.otp)); pm.environment.set('otp', String(j.data.otp)); console.log('OTP: ' + j.data.otp); }",
+								"pm.test('OK', () => pm.response.to.have.status(200));"
+							]}}],
+							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{register_mobile}}\",\n  \"type\": \"vendor_register\"\n}" },
+								"url": "{{base_url}}/api/v2/auth/send-otp",
+								"description": "Use a mobile number that is not already registered." }
+						},
+						{
+							"name": "B2 Verify OTP (Vendor Register)",
+							"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+								"const j = pm.response.json();",
+								"pm.test('Verified', () => pm.expect(j.data?.verified).to.eql(true));",
+								"pm.test('OK', () => pm.response.to.have.status(200));"
+							]}}],
+							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{register_mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"vendor_register\"\n}" },
+								"url": "{{base_url}}/api/v2/auth/verify-otp",
+								"description": "Verifies OTP only. Complete signup in next step." }
+						},
+						{
+							"name": "B3 Register (Owner + Shop + Bank)",
+							"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+								"const j = pm.response.json();",
+								"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }",
+								"pm.test('OK', () => pm.response.to.have.status(201));"
+							]}}],
+							"request": { "auth": { "type": "noauth" }, "method": "POST",
+								"body": { "mode": "formdata", "formdata": [
+									{ "key": "name", "value": "Sarah", "type": "text", "description": "Owner Details — Full Name" },
+									{ "key": "mobile", "value": "{{register_mobile}}", "type": "text" },
+									{ "key": "email", "value": "sarah@gmail.com", "type": "text" },
+									{ "key": "aadhar_card", "type": "file", "src": [], "description": "Owner Details — Aadhar Card" },
+									{ "key": "shop_name", "value": "Sarah Plumbing Mart", "type": "text", "description": "Shop Details" },
+									{ "key": "business_mobile", "value": "{{register_mobile}}", "type": "text" },
+									{ "key": "shop_email", "value": "shop.sarah@gmail.com", "type": "text" },
+									{ "key": "gst_number", "value": "27AABCS1234A1Z5", "type": "text" },
+									{ "key": "address", "value": "123, ABC Road, XYZ Area", "type": "text" },
+									{ "key": "country", "value": "India", "type": "text" },
+									{ "key": "state", "value": "M.P", "type": "text" },
+									{ "key": "city", "value": "Indore", "type": "text" },
+									{ "key": "pincode", "value": "452001", "type": "text" },
+									{ "key": "shop_logo", "type": "file", "src": [], "description": "Shop Details — Logo" },
+									{ "key": "pan_card", "type": "file", "src": [], "description": "Shop Details — PAN Card" },
+									{ "key": "account_holder_name", "value": "Sarah", "type": "text", "description": "Bank Details" },
+									{ "key": "account_number", "value": "951234587254", "type": "text" },
+									{ "key": "ifsc_code", "value": "HDFC0001234", "type": "text" },
+									{ "key": "bank_name", "value": "Bank Of Mirzapur", "type": "text" },
+									{ "key": "account_type", "value": "savings", "type": "text", "description": "savings or current" }
+								] },
+								"url": "{{base_url}}/api/v2/auth/register",
+								"description": "Multipart register — Owner Details + Shop Details + Bank Details. Status starts as pending." }
+						}
+					]
+				},
+				{
+					"name": "Flow C — Partner Dashboard (Home)",
+					"item": [
+						{
+							"name": "C1 Dashboard",
+							"request": { "method": "GET", "url": "{{base_url}}/api/v2/dashboard",
+								"description": "**Screen:** Partner Dashboard — earnings, rating, stats, new orders" }
+						},
+						{
+							"name": "C2 Accept Order",
+							"request": { "method": "POST", "url": "{{base_url}}/api/v2/orders/{{order_id}}/accept",
+								"description": "**Screen:** New Order card → Accept" }
+						},
+						{
+							"name": "C3 Reject Order",
+							"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"reason\": \"Out of stock\"\n}" },
+								"url": "{{base_url}}/api/v2/orders/{{order_id}}/reject",
+								"description": "**Screen:** New Order card → Reject" }
+						}
+					]
+				},
+				{
+					"name": "Flow D — Orders Tab",
+					"item": [
+						{
+							"name": "D1 Order History (All)",
+							"request": { "method": "GET",
+								"url": { "raw": "{{base_url}}/api/v2/orders?status=all", "query": [{ "key": "status", "value": "all" }] },
+								"description": "**Screen:** Order History — All Orders tab" }
+						},
+						{
+							"name": "D2 Order History (Accepted)",
+							"request": { "method": "GET",
+								"url": { "raw": "{{base_url}}/api/v2/orders?status=accepted", "query": [{ "key": "status", "value": "accepted" }] } }
+						},
+						{
+							"name": "D3 Order History (Out for Delivery)",
+							"request": { "method": "GET",
+								"url": { "raw": "{{base_url}}/api/v2/orders?status=out_for_delivery", "query": [{ "key": "status", "value": "out_for_delivery" }] } }
+						},
+						{
+							"name": "D4 Order Detail",
+							"request": { "method": "GET", "url": "{{base_url}}/api/v2/orders/{{order_id}}" }
+						}
+					]
+				},
+				{
+					"name": "Flow E — Products Tab",
+					"item": [
+						{
+							"name": "E1 Products List",
+							"request": { "method": "GET",
+								"url": { "raw": "{{base_url}}/api/v2/products?search=", "query": [{ "key": "search", "value": "" }] },
+								"description": "**Screen:** Products tab with search" }
+						},
+						{
+							"name": "E2 Categories Lookup",
+							"request": { "method": "GET", "url": "{{base_url}}/api/v2/lookups/categories",
+								"description": "**Screen:** Add Product — Category dropdown" }
+						},
+						{
+							"name": "E3 Add Product",
+							"request": { "method": "POST",
+								"body": { "mode": "formdata", "formdata": [
+									{ "key": "product_name", "value": "Aqua-Seal Pro Tape", "type": "text" },
+									{ "key": "description", "value": "Premium-grade PTFE thread sealant tape for plumbing.", "type": "text" },
+									{ "key": "price", "value": "15.50", "type": "text" },
+									{ "key": "sale_price", "value": "12.99", "type": "text" },
+									{ "key": "category_id", "value": "{{category_id}}", "type": "text" },
+									{ "key": "subcategory_id", "value": "{{subcategory_id}}", "type": "text" },
+									{ "key": "stock", "value": "12", "type": "text" },
+									{ "key": "images", "type": "file", "src": [], "description": "Upload 1–5 product images" }
+								] },
+								"url": "{{base_url}}/api/v2/products",
+								"description": "**Screen:** Add Product → Add Product button" }
+						},
+						{
+							"name": "E4 Product Detail",
+							"request": { "method": "GET", "url": "{{base_url}}/api/v2/products/{{product_id}}",
+								"description": "**Screen:** Product detail with reviews" }
+						},
+						{
+							"name": "E5 Delete Product",
+							"request": { "method": "DELETE", "url": "{{base_url}}/api/v2/products/{{product_id}}",
+								"description": "**Screen:** Delete Product confirmation" }
+						}
+					]
+				},
+				{
+					"name": "Flow F — Profile Tab",
+					"item": [
+						{
+							"name": "F1 Profile",
+							"request": { "method": "GET", "url": "{{base_url}}/api/v2/profile",
+								"description": "**Screen:** Profile tab — Hello + name" }
+						},
+						{
+							"name": "F2 Owner Details",
+							"request": { "method": "GET", "url": "{{base_url}}/api/v2/profile/owner-details",
+								"description": "**Screen:** Profile → Owner Details" }
+						},
+						{
+							"name": "F3 Shop Details",
+							"request": { "method": "GET", "url": "{{base_url}}/api/v2/profile/shop-details",
+								"description": "**Screen:** Profile → Shop Details" }
+						},
+						{
+							"name": "F4 Payments & Earnings",
+							"request": { "method": "GET", "url": "{{base_url}}/api/v2/earnings",
+								"description": "**Screen:** Profile → Payments & Earnings" }
+						},
+						{
+							"name": "F5 Withdraw Request",
+							"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": { "mode": "raw", "raw": "{\n  \"amount\": 2200\n}" },
+								"url": "{{base_url}}/api/v2/earnings/withdraw",
+								"description": "**Screen:** Withdrawal Request modal" }
+						},
+						{
+							"name": "F6 App Config (FAQs + Legal)",
+							"request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/v2/config",
+								"description": "**Screen:** FAQs, Privacy Policy, Terms" }
+						},
+						{
+							"name": "F7 Logout",
+							"request": { "method": "POST", "url": "{{base_url}}/api/v2/auth/logout",
+								"description": "**Screen:** Profile → Log Out" }
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "01 — Authentication",
+			"description": "OTP-based vendor login and registration.\n\n**Login:** `vendor_login` | **Register:** `vendor_register`",
+			"item": [
+				{
+					"name": "Send OTP (Vendor Login)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"const j = pm.response.json();",
+						"if (j.data?.otp) { pm.collectionVariables.set('otp', String(j.data.otp)); pm.environment.set('otp', String(j.data.otp)); console.log('OTP: ' + j.data.otp); }",
+						"pm.test('OK', () => pm.response.to.have.status(200));"
+					]}}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"type\": \"vendor_login\"\n}" },
+						"url": "{{base_url}}/api/v2/auth/send-otp",
+						"description": "**POST** `/api/v2/auth/send-otp`\n\n**Body:** `{ \"mobile\", \"type\": \"vendor_login\" }`" }
+				},
+				{
+					"name": "Send OTP (Vendor Register)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"const j = pm.response.json();",
+						"if (j.data?.otp) { pm.collectionVariables.set('otp', String(j.data.otp)); pm.environment.set('otp', String(j.data.otp)); console.log('OTP: ' + j.data.otp); }",
+						"pm.test('OK', () => pm.response.to.have.status(200));"
+					]}}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{register_mobile}}\",\n  \"type\": \"vendor_register\"\n}" },
+						"url": "{{base_url}}/api/v2/auth/send-otp",
+						"description": "**POST** `/api/v2/auth/send-otp`\n\n**Body:** `{ \"mobile\", \"type\": \"vendor_register\" }`" }
+				},
+				{
+					"name": "Verify OTP (Vendor Login)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"const j = pm.response.json();",
+						"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }",
+						"pm.test('OK', () => pm.response.to.have.status(200));"
+					]}}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"vendor_login\"\n}" },
+						"url": "{{base_url}}/api/v2/auth/verify-otp",
+						"description": "Returns `token` + `user` on success." }
+				},
+				{
+					"name": "Verify OTP (Vendor Register)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"const j = pm.response.json();",
+						"pm.test('Verified', () => pm.expect(j.data?.verified).to.eql(true));",
+						"pm.test('OK', () => pm.response.to.have.status(200));"
+					]}}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{register_mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"vendor_register\"\n}" },
+						"url": "{{base_url}}/api/v2/auth/verify-otp",
+						"description": "Returns `{ verified: true }`. Then call **Register**." }
+				},
+				{
+					"name": "Login",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"const j = pm.response.json();",
+						"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }",
+						"pm.test('OK', () => pm.response.to.have.status(200));"
+					]}}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}}\n}" },
+						"url": "{{base_url}}/api/v2/auth/login",
+						"description": "Alternative to Verify OTP (Login)." }
+				},
+				{
+					"name": "Register (Vendor)",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+						"const j = pm.response.json();",
+						"if (j.data?.token) { pm.collectionVariables.set('token', j.data.token); pm.environment.set('token', j.data.token); }",
+						"pm.test('OK', () => pm.response.to.have.status(201));"
+					]}}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST",
+						"body": { "mode": "formdata", "formdata": [
+							{ "key": "name", "value": "Sarah", "type": "text" },
+							{ "key": "mobile", "value": "{{register_mobile}}", "type": "text" },
+							{ "key": "email", "value": "sarah@gmail.com", "type": "text" },
+							{ "key": "aadhar_card", "type": "file", "src": [] },
+							{ "key": "shop_name", "value": "Sarah Plumbing Mart", "type": "text" },
+							{ "key": "business_mobile", "value": "{{register_mobile}}", "type": "text" },
+							{ "key": "shop_email", "value": "shop.sarah@gmail.com", "type": "text" },
+							{ "key": "gst_number", "value": "27AABCS1234A1Z5", "type": "text" },
+							{ "key": "address", "value": "123, ABC Road, XYZ Area", "type": "text" },
+							{ "key": "country", "value": "India", "type": "text" },
+							{ "key": "state", "value": "M.P", "type": "text" },
+							{ "key": "city", "value": "Indore", "type": "text" },
+							{ "key": "pincode", "value": "452001", "type": "text" },
+							{ "key": "shop_logo", "type": "file", "src": [] },
+							{ "key": "pan_card", "type": "file", "src": [] },
+							{ "key": "account_holder_name", "value": "Sarah", "type": "text" },
+							{ "key": "account_number", "value": "951234587254", "type": "text" },
+							{ "key": "ifsc_code", "value": "HDFC0001234", "type": "text" },
+							{ "key": "bank_name", "value": "Bank Of Mirzapur", "type": "text" },
+							{ "key": "account_type", "value": "savings", "type": "text" }
+						] },
+						"url": "{{base_url}}/api/v2/auth/register",
+						"description": "Multipart — requires OTP verified first. Vendor status = pending." }
+				},
+				{
+					"name": "Logout",
+					"request": { "method": "POST", "url": "{{base_url}}/api/v2/auth/logout",
+						"description": "**POST** `/api/v2/auth/logout` — requires Bearer token" }
+				}
+			]
+		},
+		{
+			"name": "02 — Dashboard",
+			"item": [
+				{ "name": "Partner Dashboard", "request": { "method": "GET", "url": "{{base_url}}/api/v2/dashboard",
+					"description": "Returns total_earnings, rating, stats, new_orders." } }
+			]
+		},
+		{
+			"name": "03 — Orders",
+			"item": [
+				{ "name": "Order History (All)", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/v2/orders?status=all", "query": [{ "key": "status", "value": "all" }] } } },
+				{ "name": "Order History (New)", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/v2/orders?status=new", "query": [{ "key": "status", "value": "new" }] } } },
+				{ "name": "Order History (Accepted)", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/v2/orders?status=accepted", "query": [{ "key": "status", "value": "accepted" }] } } },
+				{ "name": "Order History (Out for Delivery)", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/v2/orders?status=out_for_delivery", "query": [{ "key": "status", "value": "out_for_delivery" }] } } },
+				{ "name": "Order History (Delivered)", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/v2/orders?status=delivered", "query": [{ "key": "status", "value": "delivered" }] } } },
+				{ "name": "Order History (Cancelled)", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/v2/orders?status=cancelled", "query": [{ "key": "status", "value": "cancelled" }] } } },
+				{ "name": "Order Detail", "request": { "method": "GET", "url": "{{base_url}}/api/v2/orders/{{order_id}}" } },
+				{ "name": "Accept Order", "request": { "method": "POST", "url": "{{base_url}}/api/v2/orders/{{order_id}}/accept",
+					"description": "Pending → Accepted. Requires approved vendor." } },
+				{ "name": "Reject Order", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"reason\": \"Out of stock\"\n}" },
+					"url": "{{base_url}}/api/v2/orders/{{order_id}}/reject",
+					"description": "Pending → Cancelled." } },
+				{ "name": "Out for Delivery", "request": { "method": "POST", "url": "{{base_url}}/api/v2/orders/{{order_id}}/out-for-delivery",
+					"description": "Accepted → Out for Delivery. Use an accepted order_id." } },
+				{ "name": "Mark Delivered", "request": { "method": "POST", "url": "{{base_url}}/api/v2/orders/{{order_id}}/deliver",
+					"description": "Out for Delivery → Delivered. Use an out_for_delivery order_id." } }
+			]
+		},
+		{
+			"name": "04 — Products",
+			"item": [
+				{ "name": "Categories Lookup", "request": { "method": "GET", "url": "{{base_url}}/api/v2/lookups/categories",
+					"description": "Categories + subcategories for Add Product form." } },
+				{ "name": "Products List", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/v2/products?search=&per_page=15", "query": [{ "key": "search", "value": "" }, { "key": "per_page", "value": "15" }] } } },
+				{ "name": "Add Product", "request": { "method": "POST",
+					"body": { "mode": "formdata", "formdata": [
+						{ "key": "product_name", "value": "Aqua-Seal Pro Tape", "type": "text" },
+						{ "key": "description", "value": "Premium-grade PTFE thread sealant tape.", "type": "text" },
+						{ "key": "price", "value": "15.50", "type": "text" },
+						{ "key": "sale_price", "value": "12.99", "type": "text" },
+						{ "key": "category_id", "value": "{{category_id}}", "type": "text" },
+						{ "key": "subcategory_id", "value": "{{subcategory_id}}", "type": "text" },
+						{ "key": "stock", "value": "12", "type": "text" },
+						{ "key": "images", "type": "file", "src": [], "description": "1–5 images required" }
+					] },
+					"url": "{{base_url}}/api/v2/products" } },
+				{ "name": "Product Detail", "request": { "method": "GET", "url": "{{base_url}}/api/v2/products/{{product_id}}" } },
+				{ "name": "Update Product", "request": { "method": "PUT",
+					"body": { "mode": "formdata", "formdata": [
+						{ "key": "product_name", "value": "Aqua-Seal Pro Tape", "type": "text" },
+						{ "key": "price", "value": "15.50", "type": "text" },
+						{ "key": "sale_price", "value": "12.99", "type": "text" },
+						{ "key": "stock", "value": "20", "type": "text" },
+						{ "key": "images", "type": "file", "src": [], "description": "Optional new images" },
+						{ "key": "remove_image_ids[]", "value": "1", "type": "text", "description": "Optional — image IDs to remove" }
+					] },
+					"url": "{{base_url}}/api/v2/products/{{product_id}}",
+					"description": "Also supports POST for multipart updates." } },
+				{ "name": "Delete Product", "request": { "method": "DELETE", "url": "{{base_url}}/api/v2/products/{{product_id}}" } }
+			]
+		},
+		{
+			"name": "05 — Profile",
+			"item": [
+				{ "name": "Get Profile", "request": { "method": "GET", "url": "{{base_url}}/api/v2/profile" } },
+				{ "name": "Get Owner Details", "request": { "method": "GET", "url": "{{base_url}}/api/v2/profile/owner-details" } },
+				{ "name": "Update Owner Details", "request": { "method": "PUT",
+					"body": { "mode": "formdata", "formdata": [
+						{ "key": "name", "value": "Sarah", "type": "text" },
+						{ "key": "mobile", "value": "{{mobile}}", "type": "text" },
+						{ "key": "email", "value": "sarah@gmail.com", "type": "text" },
+						{ "key": "aadhar_card", "type": "file", "src": [], "description": "Optional" }
+					] },
+					"url": "{{base_url}}/api/v2/profile/owner-details",
+					"description": "Also supports POST." } },
+				{ "name": "Get Shop Details", "request": { "method": "GET", "url": "{{base_url}}/api/v2/profile/shop-details" } },
+				{ "name": "Update Shop Details", "request": { "method": "PUT",
+					"body": { "mode": "formdata", "formdata": [
+						{ "key": "shop_name", "value": "Sarah Plumbing Mart", "type": "text" },
+						{ "key": "business_mobile", "value": "{{mobile}}", "type": "text" },
+						{ "key": "email", "value": "shop.sarah@gmail.com", "type": "text" },
+						{ "key": "gst_number", "value": "27AABCS1234A1Z5", "type": "text" },
+						{ "key": "address", "value": "123, ABC Road, XYZ Area", "type": "text" },
+						{ "key": "country", "value": "India", "type": "text" },
+						{ "key": "state", "value": "M.P", "type": "text" },
+						{ "key": "city", "value": "Indore", "type": "text" },
+						{ "key": "pincode", "value": "452001", "type": "text" },
+						{ "key": "shop_logo", "type": "file", "src": [], "description": "Optional" },
+						{ "key": "pan_card", "type": "file", "src": [], "description": "Optional" }
+					] },
+					"url": "{{base_url}}/api/v2/profile/shop-details",
+					"description": "Also supports POST." } }
+			]
+		},
+		{
+			"name": "06 — Earnings",
+			"item": [
+				{ "name": "Payments & Earnings", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/v2/earnings?search=&from_date=&to_date=", "query": [
+						{ "key": "search", "value": "", "description": "Transaction ID or client name" },
+						{ "key": "from_date", "value": "", "description": "YYYY-MM-DD" },
+						{ "key": "to_date", "value": "", "description": "YYYY-MM-DD" }
+					] },
+					"description": "Returns summary (total_earnings, wallet_amount), transactions, withdrawals." } },
+				{ "name": "Withdraw Request", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"amount\": 2200\n}" },
+					"url": "{{base_url}}/api/v2/earnings/withdraw",
+					"description": "Submit withdrawal to linked bank account." } }
+			]
+		},
+		{
+			"name": "07 — Config",
+			"item": [
+				{ "name": "App Config", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/v2/config",
+					"description": "FAQs, privacy policy, terms & conditions." } }
+			]
+		}
+	]
+}

@@ -87,6 +87,22 @@ class AdminValidation
         return ['nullable', 'string', self::maxRule('search')];
     }
 
+    public static function dateRangeRules(): array
+    {
+        return [
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+        ];
+    }
+
+    public static function customDateRangeRules(): array
+    {
+        return [
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+        ];
+    }
+
     public static function passwordRules(bool $required = true): array
     {
         $rules = ['string', 'min:8', self::maxRule('password'), Password::defaults()];

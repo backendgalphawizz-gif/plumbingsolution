@@ -2,22 +2,35 @@
 
 namespace App\Models;
 
+use App\Enums\CouponAppliesTo;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class Coupon extends Model
 {
     protected $fillable = [
-        'code', 'discount_type', 'discount_value', 'min_order_amount', 'status', 'expires_at',
+        'code', 'applies_to', 'discount_type', 'discount_value', 'min_order_amount', 'status', 'expires_at',
     ];
 
     protected function casts(): array
     {
         return [
+            'applies_to' => CouponAppliesTo::class,
             'discount_value' => 'decimal:2',
             'min_order_amount' => 'decimal:2',
             'status' => 'boolean',
             'expires_at' => 'datetime',
         ];
+    }
+
+    public function scopeForOrders(Builder $query): Builder
+    {
+        return $query->where('applies_to', CouponAppliesTo::Order);
+    }
+
+    public function scopeForBookings(Builder $query): Builder
+    {
+        return $query->where('applies_to', CouponAppliesTo::Booking);
     }
 
     public function isValidFor(float $subtotal): bool

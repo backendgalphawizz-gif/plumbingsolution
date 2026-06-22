@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class Order extends Model
 {
@@ -13,6 +14,7 @@ class Order extends Model
         'order_number', 'user_id', 'vendor_id', 'status', 'subtotal', 'tax_amount',
         'shipping_amount', 'discount_amount', 'total_amount', 'shipping_address',
         'billing_address', 'notes', 'cancelled_at', 'cancellation_reason',
+        'tracking_number', 'courier_name', 'invoice_path',
     ];
 
     protected function casts(): array
@@ -45,6 +47,11 @@ class Order extends Model
 
     public function statusLogs(): HasMany
     {
-        return $this->hasMany(OrderStatusLog::class);
+        return $this->hasMany(OrderStatusLog::class)->latest();
+    }
+
+    public function payment(): MorphOne
+    {
+        return $this->morphOne(Payment::class, 'payable')->latest();
     }
 }

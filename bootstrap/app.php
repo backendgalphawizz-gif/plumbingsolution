@@ -20,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin.auth' => \App\Http\Middleware\AdminAuthenticate::class,
             'user.auth' => \App\Http\Middleware\UserAuthenticate::class,
+            'vendor.auth' => \App\Http\Middleware\VendorAuthenticate::class,
+            'provider.auth' => \App\Http\Middleware\ProviderAuthenticate::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
         ]);
     })

@@ -4,9 +4,10 @@ namespace App\Http\Controllers\Api\User;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
+use App\Enums\CouponAppliesTo;
 use App\Models\CartItem;
-use App\Models\Coupon;
 use App\Models\Product;
+use App\Services\CouponService;
 use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,13 +29,21 @@ class CartController extends Controller
             'product_variant_id' => ['nullable', 'exists:product_variants,id'],
         ]);
 
-        $product = Product::where('status', true)->findOrFail($data['product_id']);
+        $product = Product::where('status', true)->with('vendor')->findOrFail($data['product_id']);
 
         if ($product->stock < $data['quantity']) {
             return $this->error('Insufficient stock.', 422);
         }
 
-        $item = CartItem::updateOrCreate(
+        $existingVendorId = $request->user()->cartItems()
+            ->with('product')
+            ->first()?->product?->vendor_id;
+
+        if ($existingVendorId && $existingVendorId !== $product->vendor_id) {
+            return $this->error('Cart can only contain products from a single vendor. Please remove existing items first.', 422);
+        }
+
+        CartItem::updateOrCreate(
             [
                 'user_id' => $request->user()->id,
                 'product_id' => $product->id,
@@ -85,7 +94,12 @@ class CartController extends Controller
     private function buildCartResponse(Request $request, ?string $couponCode = null): array
     {
         $items = $request->user()->cartItems()
-            ->with(['product.vendor', 'product.images'])
+            ->with([
+                'product' => fn ($q) => $q->with(['vendor', 'images'])
+                    ->withAvg('reviews', 'rating')
+                    ->withCount('reviews')
+                    ->with(['reviews' => fn ($r) => $r->with('user')->latest()->limit(3)]),
+            ])
             ->get();
 
         $subtotal = $items->sum(fn ($item) => (float) ($item->product->sale_price ?? $item->product->price) * $item->quantity);
@@ -95,7 +109,7 @@ class CartController extends Controller
         $couponMessage = null;
 
         if ($couponCode) {
-            $coupon = Coupon::where('code', strtoupper($couponCode))->first();
+            $coupon = app(CouponService::class)->find($couponCode, CouponAppliesTo::Order);
             if ($coupon && $coupon->isValidFor($subtotal)) {
                 $discount = $coupon->calculateDiscount($subtotal);
                 $couponApplied = true;
@@ -106,8 +120,10 @@ class CartController extends Controller
         $taxable = max(0, $subtotal - $discount);
         $tax = round($taxable * 0.08, 2);
         $total = round($taxable + $shipping + $tax, 2);
+        $firstItem = $items->first();
 
         return [
+            'vendor' => $firstItem ? UserApiFormatter::vendor($firstItem->product->vendor) : null,
             'items' => $items->map(fn ($i) => UserApiFormatter::cartItem($i)),
             'summary' => [
                 'subtotal' => round($subtotal, 2),

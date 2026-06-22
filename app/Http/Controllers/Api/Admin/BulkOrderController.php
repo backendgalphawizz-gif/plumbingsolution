@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\BulkOrder;
 use App\Models\Quotation;
+use App\Services\QuotationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class BulkOrderController extends Controller
 {
@@ -41,32 +41,26 @@ class BulkOrderController extends Controller
         return $this->success($bulkOrder->fresh(), 'Bulk order under review.');
     }
 
-    public function createQuotation(Request $request, BulkOrder $bulkOrder): JsonResponse
+    public function createQuotation(Request $request, BulkOrder $bulkOrder, QuotationService $quotations): JsonResponse
     {
-        $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0'],
-            'details' => ['nullable', 'string'],
-        ]);
+        $data = $request->validate($quotations->storeRules());
 
-        $quotation = Quotation::create([
-            'bulk_order_id' => $bulkOrder->id,
-            'quotation_number' => 'QT-'.Str::upper(Str::random(8)),
-            'amount' => $data['amount'],
-            'details' => $data['details'] ?? null,
-            'status' => 'draft',
-            'created_by' => $request->user()->id,
-        ]);
+        $quotation = $quotations->create($bulkOrder, $data, $request->user()->id);
 
-        $bulkOrder->update(['status' => 'quotation_generated']);
-
-        return $this->success($quotation, 'Quotation created.', 201);
+        return $this->success($quotations->format($quotation), 'Quotation created.', 201);
     }
 
     public function sendQuotation(BulkOrder $bulkOrder, Quotation $quotation): JsonResponse
     {
+        abort_if($quotation->bulk_order_id !== $bulkOrder->id, 404);
+
+        if ($quotation->status !== 'draft') {
+            return $this->error('Only draft quotations can be sent.', 422);
+        }
+
         $quotation->update(['status' => 'sent', 'sent_at' => now()]);
         $bulkOrder->update(['status' => 'quotation_sent']);
 
-        return $this->success($quotation->fresh(), 'Quotation sent to customer.');
+        return $this->success(app(QuotationService::class)->format($quotation->fresh()), 'Quotation sent to customer.');
     }
 }

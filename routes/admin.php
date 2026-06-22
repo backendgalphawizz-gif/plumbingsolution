@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\BulkOrderController;
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrderController;
@@ -11,9 +12,11 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ServiceBookingController;
+use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\ServiceProviderController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\VendorController;
+use App\Http\Controllers\Admin\WithdrawalController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -22,7 +25,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('login', [AuthController::class, 'login'])->name('login.submit');
     });
 
-    Route::middleware('auth:admin')->group(function () {
+    Route::middleware('admin.auth')->group(function () {
         Route::post('logout', [AuthController::class, 'logout'])->name('logout');
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -63,6 +66,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('service-providers/{serviceProvider}/reject', [ServiceProviderController::class, 'reject'])->name('service-providers.reject');
         Route::post('service-providers/{serviceProvider}/suspend', [ServiceProviderController::class, 'suspend'])->name('service-providers.suspend');
 
+        Route::get('services/export', [ServiceController::class, 'export'])->name('services.export');
+        Route::get('services', [ServiceController::class, 'index'])->name('services.index');
+        Route::get('services/{service}', [ServiceController::class, 'show'])->name('services.show');
+        Route::delete('services/{service}', [ServiceController::class, 'destroy'])->name('services.destroy');
+
         Route::get('customers/export', [CustomerController::class, 'export'])->name('customers.export');
         Route::get('customers/create', [CustomerController::class, 'create'])->name('customers.create');
         Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
@@ -78,6 +86,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('orders/{order}', [OrderController::class, 'show'])->name('orders.show');
         Route::put('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('orders.update-status');
         Route::post('orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+
+        Route::get('coupons/order', [CouponController::class, 'orderIndex'])->name('coupons.order.index');
+        Route::post('coupons/order', [CouponController::class, 'storeOrder'])->name('coupons.order.store');
+        Route::put('coupons/order/{coupon}', [CouponController::class, 'updateOrder'])->name('coupons.order.update');
+        Route::delete('coupons/order/{coupon}', [CouponController::class, 'destroyOrder'])->name('coupons.order.destroy');
+
+        Route::get('coupons/booking', [CouponController::class, 'bookingIndex'])->name('coupons.booking.index');
+        Route::post('coupons/booking', [CouponController::class, 'storeBooking'])->name('coupons.booking.store');
+        Route::put('coupons/booking/{coupon}', [CouponController::class, 'updateBooking'])->name('coupons.booking.update');
+        Route::delete('coupons/booking/{coupon}', [CouponController::class, 'destroyBooking'])->name('coupons.booking.destroy');
 
         Route::get('service-bookings/export', [ServiceBookingController::class, 'export'])->name('service-bookings.export');
         Route::get('service-bookings', [ServiceBookingController::class, 'index'])->name('service-bookings.index');
@@ -96,6 +114,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
         Route::get('payments/{payment}', [PaymentController::class, 'show'])->name('payments.show');
         Route::post('payments/{payment}/refund', [PaymentController::class, 'refund'])->name('payments.refund');
+
+        Route::get('withdrawals', [WithdrawalController::class, 'index'])->name('withdrawals.index');
+        Route::get('withdrawals/{type}/{withdrawal}', [WithdrawalController::class, 'show'])->name('withdrawals.show')->where(['type' => 'vendor|provider|user']);
+        Route::post('withdrawals/{type}/{withdrawal}/approve', [WithdrawalController::class, 'approve'])->name('withdrawals.approve')->where(['type' => 'vendor|provider|user']);
+        Route::post('withdrawals/{type}/{withdrawal}/reject', [WithdrawalController::class, 'reject'])->name('withdrawals.reject')->where(['type' => 'vendor|provider|user']);
 
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
 
