@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\Concerns\ExportsAdminTable;
 use App\Http\Controllers\Controller;
 use App\Models\ProviderDocument;
 use App\Models\ServiceProvider;
+use App\Models\ServiceProviderImage;
 use App\Support\AdminValidation as V;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -89,6 +90,7 @@ class ServiceProviderController extends Controller
             'approved_at' => $data['status'] === ProviderStatus::Approved->value ? now() : null,
         ]);
 
+        $this->storeImages($request, $provider);
         $this->storeDocument($request, $provider);
 
         return redirect()->route('admin.service-providers.index')->with('success', 'Service provider created successfully.');
@@ -117,6 +119,7 @@ class ServiceProviderController extends Controller
                 : null,
         ]);
 
+        $this->storeImages($request, $serviceProvider);
         $this->storeDocument($request, $serviceProvider);
 
         return redirect()->route('admin.service-providers.index')->with('success', 'Service provider updated successfully.');
@@ -124,7 +127,7 @@ class ServiceProviderController extends Controller
 
     public function show(ServiceProvider $serviceProvider): View
     {
-        $serviceProvider->load(['documents', 'bookings.user']);
+        $serviceProvider->load(['documents', 'bookings.user', 'services.category']);
 
         return view('admin.service-providers.show', compact('serviceProvider'));
     }
@@ -160,6 +163,9 @@ class ServiceProviderController extends Controller
             'experience_years' => ['required', 'integer', 'min:0', 'max:50'],
             'service_area' => ['nullable', 'string', V::maxRule('service_area')],
             'status' => ['required', 'in:pending,approved,rejected,suspended'],
+            'avatar' => ['nullable', 'image', 'max:2048'],
+            'gallery_images' => ['nullable', 'array'],
+            'gallery_images.*' => ['image', 'max:2048'],
             'id_document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
         ]);
     }
@@ -176,6 +182,26 @@ class ServiceProviderController extends Controller
                 ['service_provider_id' => $provider->id, 'document_type' => 'ID Proof'],
                 ['file_path' => $request->file('id_document')->store('documents/providers', 'public')]
             );
+        }
+    }
+
+    private function storeImages(Request $request, ServiceProvider $provider): void
+    {
+        if ($request->hasFile('avatar')) {
+            $provider->update([
+                'avatar' => $request->file('avatar')->store('providers/avatars', 'public'),
+            ]);
+        }
+
+        if ($request->hasFile('gallery_images')) {
+            foreach ($request->file('gallery_images') as $i => $file) {
+                ServiceProviderImage::create([
+                    'service_provider_id' => $provider->id,
+                    'image_path' => $file->store('providers/gallery', 'public'),
+                    'is_primary' => $i === 0 && ! $provider->avatar,
+                    'sort_order' => $i,
+                ]);
+            }
         }
     }
 }

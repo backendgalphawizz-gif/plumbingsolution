@@ -25,8 +25,8 @@
 
 @if($filter==='custom')
     @component('admin.partials.filter-panel')
-        <div class="filter-field"><label class="admin-label">Start Date</label><input type="date" name="start_date" value="{{ request('start_date', $start->format('Y-m-d')) }}" class="admin-input"></div>
-        <div class="filter-field"><label class="admin-label">End Date</label><input type="date" name="end_date" value="{{ request('end_date', $end->format('Y-m-d')) }}" class="admin-input"></div>
+        <div class="filter-field"><label class="admin-label">Start Date</label><input type="date" name="start_date" value="{{ request('start_date', $start->format('Y-m-d')) }}" class="admin-input admin-date-from">@error('start_date')<p class="field-error">{{ $message }}</p>@enderror</div>
+        <div class="filter-field"><label class="admin-label">End Date</label><input type="date" name="end_date" value="{{ request('end_date', $end->format('Y-m-d')) }}" class="admin-input admin-date-to" min="{{ request('start_date', $start->format('Y-m-d')) }}">@error('end_date')<p class="field-error">{{ $message }}</p>@enderror</div>
         <input type="hidden" name="filter" value="custom">
     @endcomponent
 @endif

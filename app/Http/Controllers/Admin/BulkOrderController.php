@@ -6,10 +6,10 @@ use App\Http\Controllers\Admin\Concerns\ExportsAdminTable;
 use App\Http\Controllers\Controller;
 use App\Models\BulkOrder;
 use App\Models\Quotation;
+use App\Services\QuotationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 use App\Support\AdminValidation as V;
 
@@ -72,32 +72,26 @@ class BulkOrderController extends Controller
         return back()->with('success', 'Marked under review.');
     }
 
-    public function createQuotation(Request $request, BulkOrder $bulkOrder): RedirectResponse
+    public function createQuotation(Request $request, BulkOrder $bulkOrder, QuotationService $quotations): RedirectResponse
     {
-        $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
-            'details' => ['nullable', 'string', V::maxRule('quotation_details')],
-        ]);
+        $data = $request->validate($quotations->storeRules());
 
-        Quotation::create([
-            'bulk_order_id' => $bulkOrder->id,
-            'quotation_number' => 'QT-'.Str::upper(Str::random(8)),
-            'amount' => $data['amount'],
-            'details' => $data['details'] ?? null,
-            'status' => 'draft',
-            'created_by' => auth('admin')->id(),
-        ]);
-
-        $bulkOrder->update(['status' => 'quotation_generated']);
+        $quotations->create($bulkOrder, $data, auth('admin')->id());
 
         return back()->with('success', 'Quotation created.');
     }
 
     public function sendQuotation(BulkOrder $bulkOrder, Quotation $quotation): RedirectResponse
     {
+        abort_if($quotation->bulk_order_id !== $bulkOrder->id, 404);
+
+        if ($quotation->status !== 'draft') {
+            return back()->with('error', 'Only draft quotations can be sent.');
+        }
+
         $quotation->update(['status' => 'sent', 'sent_at' => now()]);
         $bulkOrder->update(['status' => 'quotation_sent']);
 
-        return back()->with('success', 'Quotation sent.');
+        return back()->with('success', 'Quotation sent to customer.');
     }
 }

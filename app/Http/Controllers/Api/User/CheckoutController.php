@@ -2,17 +2,19 @@
 
 namespace App\Http\Controllers\Api\User;
 
+use App\Enums\CouponAppliesTo;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
-use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusLog;
 use App\Models\Payment;
+use App\Models\Transaction;
 use App\Models\UserAddress;
+use App\Services\CouponService;
 use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,9 +37,14 @@ class CheckoutController extends Controller
         $data = $request->validate([
             'address_id' => ['required', 'exists:user_addresses,id'],
             'payment_method' => ['required', 'in:razorpay,cod'],
+            'transaction_id' => ['nullable', 'string', 'max:255'],
             'coupon_code' => ['nullable', 'string', 'max:30'],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
+
+        if ($data['payment_method'] === 'razorpay' && empty($data['transaction_id'])) {
+            return $this->error('Transaction ID is required for online payment.', 422);
+        }
 
         $user = $request->user();
         $address = UserAddress::where('user_id', $user->id)->findOrFail($data['address_id']);
@@ -46,6 +53,11 @@ class CheckoutController extends Controller
 
         if ($cartItems->isEmpty()) {
             return $this->error('Your cart is empty.', 422);
+        }
+
+        $vendorIds = $cartItems->pluck('product.vendor_id')->unique()->filter();
+        if ($vendorIds->count() > 1) {
+            return $this->error('Cart can only contain products from a single vendor.', 422);
         }
 
         foreach ($cartItems as $item) {
@@ -59,7 +71,7 @@ class CheckoutController extends Controller
         $discount = 0;
 
         if (! empty($data['coupon_code'])) {
-            $coupon = Coupon::where('code', strtoupper($data['coupon_code']))->first();
+            $coupon = app(CouponService::class)->find($data['coupon_code'], CouponAppliesTo::Order);
             if ($coupon && $coupon->isValidFor($subtotal)) {
                 $discount = $coupon->calculateDiscount($subtotal);
             }
@@ -119,12 +131,23 @@ class CheckoutController extends Controller
             'status' => $paymentStatus,
             'amount' => $total,
             'currency' => 'INR',
-            'gateway_payment_id' => $data['payment_method'] === 'razorpay' ? 'rzp_'.Str::random(14) : null,
+            'gateway_payment_id' => $data['transaction_id'] ?? null,
         ]);
+
+        if (! empty($data['transaction_id'])) {
+            Transaction::create([
+                'payment_id' => $payment->id,
+                'transaction_id' => $data['transaction_id'],
+                'type' => 'payment',
+                'amount' => $total,
+                'status' => 'completed',
+                'description' => 'Order payment',
+            ]);
+        }
 
         $user->cartItems()->delete();
 
-        $order->load(['items', 'vendor']);
+        $order->load(['items', 'vendor', 'payment']);
 
         $response = [
             'order' => UserApiFormatter::order($order, detailed: true),
@@ -133,10 +156,11 @@ class CheckoutController extends Controller
                 'method' => $payment->method->value,
                 'status' => $payment->status->value,
                 'amount' => (float) $payment->amount,
+                'transaction_id' => $payment->gateway_payment_id,
             ],
         ];
 
-        if ($data['payment_method'] === 'razorpay') {
+        if ($data['payment_method'] === 'razorpay' && empty($data['transaction_id'])) {
             $response['razorpay'] = [
                 'order_id' => 'order_'.Str::random(14),
                 'amount' => (int) ($total * 100),

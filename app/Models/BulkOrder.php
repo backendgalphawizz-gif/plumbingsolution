@@ -5,11 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 
 class BulkOrder extends Model
 {
     protected $fillable = [
-        'reference_number', 'user_id', 'requirement_description', 'status', 'admin_notes',
+        'reference_number', 'user_id', 'full_name', 'mobile',
+        'requirement_description', 'status', 'admin_notes',
     ];
 
     public function user(): BelongsTo
@@ -25,5 +27,10 @@ class BulkOrder extends Model
     public function quotations(): HasMany
     {
         return $this->hasMany(Quotation::class);
+    }
+
+    public function payment(): MorphOne
+    {
+        return $this->morphOne(Payment::class, 'payable');
     }
 }

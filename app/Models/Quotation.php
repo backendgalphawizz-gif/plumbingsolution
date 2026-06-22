@@ -9,13 +9,14 @@ class Quotation extends Model
 {
     protected $fillable = [
         'bulk_order_id', 'quotation_number', 'amount', 'details',
-        'status', 'created_by', 'sent_at', 'responded_at',
+        'status', 'created_by', 'sent_at', 'responded_at', 'rejection_reason',
     ];
 
     protected function casts(): array
     {
         return [
             'amount' => 'decimal:2',
+            'details' => 'array',
             'sent_at' => 'datetime',
             'responded_at' => 'datetime',
         ];

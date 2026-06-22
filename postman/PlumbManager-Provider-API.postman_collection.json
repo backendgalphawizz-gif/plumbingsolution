@@ -1,0 +1,114 @@
+{
+	"info": {
+		"_postman_id": "plumbmanager-provider-api-v1",
+		"name": "PlumbManager — Provider App API",
+		"description": "# PlumbManager Provider App API\n\nService provider mobile app API (`/api/v1/*`).\n\n## OTP Types\n`login` | `register`\n\n## Quick Start\n1. Import collection + **PlumbManager Provider App — Local** environment\n2. Run **Send OTP (Provider Login)** → **Verify OTP**\n3. Token auto-saves to `{{token}}`",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "base_url", "value": "http://127.0.0.1:8001" },
+		{ "key": "token", "value": "" },
+		{ "key": "mobile", "value": "9988700001" },
+		{ "key": "register_mobile", "value": "9988799999" },
+		{ "key": "otp", "value": "" },
+		{ "key": "booking_id", "value": "1" },
+		{ "key": "service_id", "value": "1" },
+		{ "key": "category_id", "value": "1" }
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+	},
+	"event": [{ "listen": "prerequest", "script": { "type": "text/javascript", "exec": ["pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });"] } }],
+	"item": [
+		{
+			"name": "01 — Authentication",
+			"item": [
+				{
+					"name": "Send OTP (Provider Login)",
+					"event": [{ "listen": "test", "script": { "exec": ["const j=pm.response.json();if(j.data?.otp){pm.collectionVariables.set('otp',String(j.data.otp));pm.environment.set('otp',String(j.data.otp));}","pm.test('OK',()=>pm.response.to.have.status(200));"], "type": "text/javascript" }}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"type\": \"login\"\n}" }, "url": "{{base_url}}/api/v1/auth/send-otp" }
+				},
+				{
+					"name": "Verify OTP (Provider Login)",
+					"event": [{ "listen": "test", "script": { "exec": ["const j=pm.response.json();if(j.data?.token){pm.collectionVariables.set('token',j.data.token);pm.environment.set('token',j.data.token);}","pm.test('OK',()=>pm.response.to.have.status(200));"], "type": "text/javascript" }}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"login\"\n}" }, "url": "{{base_url}}/api/v1/auth/verify-otp" }
+				},
+				{
+					"name": "Register (Provider)",
+					"event": [{ "listen": "test", "script": { "exec": ["const j=pm.response.json();if(j.data?.token){pm.collectionVariables.set('token',j.data.token);pm.environment.set('token',j.data.token);}","pm.test('OK',()=>pm.response.to.have.status(201));"], "type": "text/javascript" }}],
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "body": { "mode": "formdata", "formdata": [
+						{ "key": "name", "value": "Arjun Provider", "type": "text" },
+						{ "key": "mobile", "value": "{{register_mobile}}", "type": "text" },
+						{ "key": "email", "value": "arjun@example.com", "type": "text" },
+						{ "key": "address", "value": "45, service colony, Indore", "type": "text" },
+						{ "key": "skills[0]", "value": "Pipe Repair", "type": "text" },
+						{ "key": "skills[1]", "value": "Leak Fixing", "type": "text" },
+						{ "key": "experience", "value": "5", "type": "text" },
+						{ "key": "account_number", "value": "123456789012", "type": "text" },
+						{ "key": "account_holder_name", "value": "Arjun Provider", "type": "text" },
+						{ "key": "ifsc_code", "value": "SBIN0001234", "type": "text" },
+						{ "key": "bank_name", "value": "State Bank of India", "type": "text" },
+						{ "key": "account_type", "value": "savings", "type": "text" },
+						{ "key": "aadhar_front", "type": "file", "src": [] },
+						{ "key": "aadhar_back", "type": "file", "src": [] },
+						{ "key": "pan_card", "type": "file", "src": [] }
+					] }, "url": "{{base_url}}/api/v1/auth/register" }
+				},
+				{ "name": "Logout", "request": { "method": "POST", "url": "{{base_url}}/api/v1/auth/logout" } }
+			]
+		},
+		{
+			"name": "02 — Dashboard & Bookings",
+			"item": [
+				{ "name": "Provider Dashboard", "request": { "method": "GET", "url": "{{base_url}}/api/v1/dashboard" } },
+				{ "name": "Booking History (All)", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/v1/bookings?status=all", "query": [{ "key": "status", "value": "all" }] } } },
+				{ "name": "Booking History (Accepted)", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/v1/bookings?status=accepted", "query": [{ "key": "status", "value": "accepted" }] } } },
+				{ "name": "Booking History (Ongoing)", "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/v1/bookings?status=ongoing", "query": [{ "key": "status", "value": "ongoing" }] } } },
+				{ "name": "Booking Detail", "request": { "method": "GET", "url": "{{base_url}}/api/v1/bookings/{{booking_id}}" } },
+				{ "name": "Accept Booking", "request": { "method": "POST", "url": "{{base_url}}/api/v1/bookings/{{booking_id}}/accept" } },
+				{ "name": "Reject Booking", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Unavailable\"\n}" }, "url": "{{base_url}}/api/v1/bookings/{{booking_id}}/reject" } },
+				{ "name": "Start Service", "request": { "method": "POST", "url": "{{base_url}}/api/v1/bookings/{{booking_id}}/start" } },
+				{ "name": "Complete Service", "request": { "method": "POST", "url": "{{base_url}}/api/v1/bookings/{{booking_id}}/complete" } }
+			]
+		},
+		{
+			"name": "03 — Services",
+			"item": [
+				{ "name": "Categories Lookup", "request": { "method": "GET", "url": "{{base_url}}/api/v1/lookups/categories" } },
+				{ "name": "Services List", "request": { "method": "GET", "url": "{{base_url}}/api/v1/services" } },
+				{ "name": "Add Service", "event": [{ "listen": "test", "script": { "exec": ["const j=pm.response.json();if(j.data?.id){pm.collectionVariables.set('service_id',String(j.data.id));pm.environment.set('service_id',String(j.data.id));}","pm.test('OK',()=>pm.response.to.have.status(201));"], "type": "text/javascript" }}], "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [
+					{ "key": "name", "value": "Pipe Leak Repair", "type": "text" },
+					{ "key": "description", "value": "Fix leaking pipes and joints with warranty.", "type": "text" },
+					{ "key": "price", "value": "850", "type": "text" },
+					{ "key": "category_id", "value": "{{category_id}}", "type": "text" },
+					{ "key": "is_available", "value": "true", "type": "text" },
+					{ "key": "images[]", "type": "file", "src": [] }
+				] }, "url": "{{base_url}}/api/v1/services" } },
+				{ "name": "Service Detail", "request": { "method": "GET", "url": "{{base_url}}/api/v1/services/{{service_id}}" } },
+				{ "name": "Update Service", "request": { "method": "POST", "header": [{ "key": "X-HTTP-Method-Override", "value": "PUT" }], "body": { "mode": "formdata", "formdata": [
+					{ "key": "_method", "value": "PUT", "type": "text" },
+					{ "key": "name", "value": "Pipe Leak Repair (Updated)", "type": "text" },
+					{ "key": "description", "value": "Updated description for pipe repair service.", "type": "text" },
+					{ "key": "price", "value": "900", "type": "text" },
+					{ "key": "category_id", "value": "{{category_id}}", "type": "text" },
+					{ "key": "is_available", "value": "true", "type": "text" },
+					{ "key": "images[]", "type": "file", "src": [] }
+				] }, "url": "{{base_url}}/api/v1/services/{{service_id}}" } },
+				{ "name": "Delete Service", "request": { "method": "DELETE", "url": "{{base_url}}/api/v1/services/{{service_id}}" } }
+			]
+		},
+		{
+			"name": "04 — Profile & Earnings",
+			"item": [
+				{ "name": "Get Profile", "request": { "method": "GET", "url": "{{base_url}}/api/v1/profile" } },
+				{ "name": "Personal Details", "request": { "method": "GET", "url": "{{base_url}}/api/v1/profile/personal-details" } },
+				{ "name": "Bank Details", "request": { "method": "GET", "url": "{{base_url}}/api/v1/profile/bank-details" } },
+				{ "name": "Skills & Experience", "request": { "method": "GET", "url": "{{base_url}}/api/v1/profile/skills-details" } },
+				{ "name": "Payments & Earnings", "request": { "method": "GET", "url": "{{base_url}}/api/v1/earnings" } },
+				{ "name": "Withdraw Request", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"amount\": 2200\n}" }, "url": "{{base_url}}/api/v1/earnings/withdraw" } },
+				{ "name": "App Config", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/v1/config" } }
+			]
+		}
+	]
+}
