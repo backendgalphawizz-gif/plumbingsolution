@@ -11,6 +11,7 @@
 		{ "key": "mobile", "value": "9876500001" },
 		{ "key": "register_mobile", "value": "9123456789" },
 		{ "key": "otp", "value": "" },
+		{ "key": "fcm_token", "value": "" },
 		{ "key": "product_id", "value": "1" },
 		{ "key": "service_id", "value": "1" },
 		{ "key": "service_category_id", "value": "1" },
@@ -54,7 +55,7 @@
 							]}}],
 							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
 								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"type\": \"login\"\n}" },
-								"url": "{{base_url}}/api/user/auth/send-otp",
+								"url": "{{base_url}}/api/v1/auth/send-otp",
 								"description": "**Screen:** Login → Enter mobile → Get OTP" }
 						},
 						{
@@ -65,8 +66,8 @@
 								"pm.test('OK', () => pm.response.to.have.status(200));"
 							]}}],
 							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"login\"\n}" },
-								"url": "{{base_url}}/api/user/auth/verify-otp",
+								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"login\",\n  \"fcm_token\": \"{{fcm_token}}\"\n}" },
+								"url": "{{base_url}}/api/v1/auth/verify-otp",
 								"description": "**Screen:** Enter OTP → Login (returns token)" }
 						}
 					]
@@ -83,7 +84,7 @@
 							]}}],
 							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
 								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{register_mobile}}\",\n  \"type\": \"register\"\n}" },
-								"url": "{{base_url}}/api/user/auth/send-otp",
+								"url": "{{base_url}}/api/v1/auth/send-otp",
 								"description": "Use a mobile number that is not already registered." }
 						},
 						{
@@ -95,7 +96,7 @@
 							]}}],
 							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
 								"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{register_mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"register\"\n}" },
-								"url": "{{base_url}}/api/user/auth/verify-otp",
+								"url": "{{base_url}}/api/v1/auth/verify-otp",
 								"description": "Verifies OTP only. Complete signup in next step." }
 						},
 						{
@@ -106,7 +107,7 @@
 								"pm.test('OK', () => pm.response.to.have.status(201));"
 							]}}],
 							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-								"body": { "mode": "raw", "raw": "{\n  \"name\": \"Lois Buily\",\n  \"mobile\": \"{{register_mobile}}\",\n  \"email\": \"loisbecket@gmail.com\",\n  \"address\": \"12, abc colony, indore\",\n  \"role\": \"customer\"\n}" },
+								"body": { "mode": "raw", "raw": "{\n  \"name\": \"Lois Buily\",\n  \"mobile\": \"{{register_mobile}}\",\n  \"email\": \"loisbecket@gmail.com\",\n  \"address\": \"12, abc colony, indore\",\n  \"role\": \"customer\",\n  \"fcm_token\": \"{{fcm_token}}\"\n}" },
 								"url": "{{base_url}}/api/user/auth/register",
 								"description": "Requires OTP verified in R2. Returns token + user." }
 						},
@@ -304,8 +305,8 @@
 					]}}],
 					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
 						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"type\": \"login\"\n}" },
-						"url": "{{base_url}}/api/user/auth/send-otp",
-						"description": "**POST** `/api/user/auth/send-otp`\n\n**Body:** `{ \"mobile\": \"9876500001\", \"type\": \"login\" }`\n\nReturns 4-digit OTP in `data.otp`. Mobile must already be registered." }
+						"url": "{{base_url}}/api/v1/auth/send-otp",
+						"description": "**POST** `/api/v1/auth/send-otp`\n\n**Body:** `{ \"mobile\": \"9876500001\", \"type\": \"login\" }`\n\nReturns 4-digit OTP in `data.otp`. Mobile must already be registered." }
 				},
 				{
 					"name": "Send OTP (Register)",
@@ -316,8 +317,8 @@
 					]}}],
 					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
 						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{register_mobile}}\",\n  \"type\": \"register\"\n}" },
-						"url": "{{base_url}}/api/user/auth/send-otp",
-						"description": "**POST** `/api/user/auth/send-otp`\n\n**Body:** `{ \"mobile\": \"9123456789\", \"type\": \"register\" }`\n\nReturns 4-digit OTP. Mobile must NOT be registered yet." }
+						"url": "{{base_url}}/api/v1/auth/send-otp",
+						"description": "**POST** `/api/v1/auth/send-otp`\n\n**Body:** `{ \"mobile\": \"9123456789\", \"type\": \"register\" }`\n\nReturns 4-digit OTP. Mobile must NOT be registered yet." }
 				},
 				{
 					"name": "Verify OTP (Login)",
@@ -327,9 +328,9 @@
 						"pm.test('OK', () => pm.response.to.have.status(200));"
 					]}}],
 					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"login\"\n}" },
-						"url": "{{base_url}}/api/user/auth/verify-otp",
-						"description": "**POST** `/api/user/auth/verify-otp`\n\n**Body:** `{ \"mobile\", \"otp\", \"type\": \"login\" }`\n\nReturns `token` + `user` on success (same as login)." }
+						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"login\",\n  \"fcm_token\": \"{{fcm_token}}\"\n}" },
+						"url": "{{base_url}}/api/v1/auth/verify-otp",
+						"description": "**POST** `/api/v1/auth/verify-otp`\n\n**Body:** `{ \"mobile\", \"otp\", \"type\": \"login\" }`\n\nReturns `token` + `user` on success (same as login)." }
 				},
 				{
 					"name": "Verify OTP (Register)",
@@ -340,8 +341,8 @@
 					]}}],
 					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
 						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{register_mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"register\"\n}" },
-						"url": "{{base_url}}/api/user/auth/verify-otp",
-						"description": "**POST** `/api/user/auth/verify-otp`\n\n**Body:** `{ \"mobile\", \"otp\", \"type\": \"register\" }`\n\nReturns `{ verified: true }`. Then call **Register** to complete signup." }
+						"url": "{{base_url}}/api/v1/auth/verify-otp",
+						"description": "**POST** `/api/v1/auth/verify-otp`\n\n**Body:** `{ \"mobile\", \"otp\", \"type\": \"register\" }`\n\nReturns `{ verified: true }`. Then call **Register** to complete signup." }
 				},
 				{
 					"name": "Login",
@@ -351,7 +352,7 @@
 						"pm.test('OK', () => pm.response.to.have.status(200));"
 					]}}],
 					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}}\n}" },
+						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}},\n  \"fcm_token\": \"{{fcm_token}}\"\n}" },
 						"url": "{{base_url}}/api/user/auth/login",
 						"description": "**POST** `/api/user/auth/login`\n\n**Body:** `{ \"mobile\", \"otp\" }`\n\nAlternative to Verify OTP (Login). OTP can be number or string." }
 				},
@@ -363,7 +364,7 @@
 						"pm.test('OK', () => pm.response.to.have.status(201));"
 					]}}],
 					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
-						"body": { "mode": "raw", "raw": "{\n  \"name\": \"Lois Buily\",\n  \"mobile\": \"{{register_mobile}}\",\n  \"email\": \"loisbecket@gmail.com\",\n  \"address\": \"12, abc colony, indore\",\n  \"role\": \"customer\"\n}" },
+						"body": { "mode": "raw", "raw": "{\n  \"name\": \"Lois Buily\",\n  \"mobile\": \"{{register_mobile}}\",\n  \"email\": \"loisbecket@gmail.com\",\n  \"address\": \"12, abc colony, indore\",\n  \"role\": \"customer\",\n  \"fcm_token\": \"{{fcm_token}}\"\n}" },
 						"url": "{{base_url}}/api/user/auth/register",
 						"description": "**POST** `/api/user/auth/register`\n\nRequires OTP verified first.\n\n**Customer/vendor:** JSON body with name, mobile, role, email?, address?\n\n**Provider:** use **Register (Provider)** — multipart with skills, experience, KYC images, bank details." }
 				},
@@ -428,7 +429,7 @@
 					"url": "{{base_url}}/api/user/products/{{product_id}}/reviews",
 					"description": "Auth required. One review per user per product." } },
 				{ "name": "App Config", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/config",
-					"description": "Combined FAQs + Privacy Policy + Terms & Conditions + app settings." } },
+					"description": "Returns user + provider config in one response: data.user (FAQs, privacy, terms, payment settings) and data.provider (FAQs, privacy, terms, commission)." } },
 				{ "name": "Service Categories", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/service-categories" } },
 				{ "name": "Services List", "request": { "auth": { "type": "noauth" }, "method": "GET",
 					"url": { "raw": "{{base_url}}/api/user/services?category_id=&per_page=15", "query": [{ "key": "category_id", "value": "" }, { "key": "per_page", "value": "15" }] } } },

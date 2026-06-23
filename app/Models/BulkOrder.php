@@ -33,4 +33,15 @@ class BulkOrder extends Model
     {
         return $this->morphOne(Payment::class, 'payable');
     }
+
+    public function canReceiveQuotation(): bool
+    {
+        if (in_array($this->status, ['customer_approved', 'order_created'], true)) {
+            return false;
+        }
+
+        return ! $this->quotations()
+            ->whereIn('status', ['sent', 'approved', 'draft'])
+            ->exists();
+    }
 }

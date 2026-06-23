@@ -16,6 +16,7 @@ return [
         'category_name' => 60,
         'slug' => 80,
         'email' => 255,
+        'password' => 255,
         'mobile' => 10,
         'address' => 300,
         'gst_number' => 15,
@@ -31,7 +32,8 @@ return [
         'cms_content' => 10000,
         'setting_value' => 255,
         'quotation_details' => 1000,
-        'password' => 64,
+        'faq_question' => 255,
+        'faq_answer' => 2000,
         'max_name_words' => 5,
     ],
 

@@ -12,6 +12,7 @@ use App\Support\AdminValidation as V;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class VendorController extends Controller
@@ -81,11 +82,12 @@ class VendorController extends Controller
         $data = $this->validated($request);
 
         $vendor = Vendor::create([
-            ...collect($data)->except(['gst_document', 'license_document'])->toArray(),
+            ...$this->vendorAttributes($data),
+            'shop_logo' => $request->file('shop_logo')->store('vendors/logos', 'public'),
             'approved_at' => $data['status'] === VendorStatus::Approved->value ? now() : null,
         ]);
 
-        $this->storeDocuments($request, $vendor);
+        $this->storeDocuments($request, $vendor, creating: true);
 
         return redirect()->route('admin.vendors.index')->with('success', 'Vendor created successfully.');
     }
@@ -102,22 +104,28 @@ class VendorController extends Controller
         $data = $this->validated($request, $vendor);
 
         $vendor->update([
-            ...collect($data)->except(['gst_document', 'license_document'])->toArray(),
+            ...$this->vendorAttributes($data),
             'approved_at' => $data['status'] === VendorStatus::Approved->value
                 ? ($vendor->approved_at ?? now())
                 : null,
         ]);
 
-        $this->storeDocuments($request, $vendor);
+        if ($request->hasFile('shop_logo')) {
+            $vendor->update(['shop_logo' => $request->file('shop_logo')->store('vendors/logos', 'public')]);
+        }
+
+        $this->storeDocuments($request, $vendor, creating: false);
 
         return redirect()->route('admin.vendors.index')->with('success', 'Vendor updated successfully.');
     }
 
     public function show(Vendor $vendor): View
     {
-        $vendor->load(['documents', 'products']);
+        $vendor->load(['documents', 'user']);
+        $vendor->loadCount(['products', 'orders']);
+        $recentOrders = $vendor->orders()->with('user')->latest()->limit(8)->get();
 
-        return view('admin.vendors.show', compact('vendor'));
+        return view('admin.vendors.show', compact('vendor', 'recentOrders'));
     }
 
     public function approve(Vendor $vendor): RedirectResponse
@@ -144,31 +152,61 @@ class VendorController extends Controller
 
     private function validated(Request $request, ?Vendor $vendor = null): array
     {
-        return $request->validate([
+        $creating = ! $vendor;
+
+        return $request->validate(array_merge([
             'shop_name' => ['required', 'string', V::maxRule('shop_name')],
             'owner_name' => V::nameRules(),
-            'mobile' => V::mobileRules(required: true),
-            'address' => V::addressRules(),
+            'mobile' => array_merge(V::mobileRules(required: true), [
+                Rule::unique('vendors', 'mobile')->ignore($vendor?->id),
+            ]),
+            'business_mobile' => V::mobileRules(required: false),
+            'email' => V::emailRules(required: false),
+            'address' => V::requiredAddressRules(),
             'gst_number' => ['nullable', 'string', V::maxRule('gst_number')],
             'status' => ['required', 'in:pending,approved,rejected,suspended'],
-            'gst_document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
-            'license_document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
-        ]);
+            'shop_logo' => V::imageDocRules($creating),
+            'aadhar_card' => V::imageDocRules($creating),
+            'pan_card' => V::imageDocRules($creating),
+        ], V::locationRules($creating), V::bankRules($creating)));
     }
 
-    private function storeDocuments(Request $request, Vendor $vendor): void
+    private function vendorAttributes(array $data): array
     {
-        if ($request->hasFile('gst_document')) {
+        return [
+            'shop_name' => $data['shop_name'],
+            'owner_name' => $data['owner_name'],
+            'mobile' => $data['mobile'],
+            'business_mobile' => $data['business_mobile'] ?? $data['mobile'],
+            'email' => $data['email'] ?? null,
+            'address' => $data['address'],
+            'country' => $data['country'],
+            'state' => $data['state'],
+            'city' => $data['city'],
+            'pincode' => $data['pincode'],
+            'gst_number' => $data['gst_number'] ?? null,
+            'status' => $data['status'],
+            'account_holder_name' => $data['account_holder_name'] ?? null,
+            'account_number' => $data['account_number'] ?? null,
+            'ifsc_code' => isset($data['ifsc_code']) ? strtoupper($data['ifsc_code']) : null,
+            'bank_name' => $data['bank_name'] ?? null,
+            'account_type' => isset($data['account_type']) ? V::normalizeAccountType($data['account_type']) : null,
+        ];
+    }
+
+    private function storeDocuments(Request $request, Vendor $vendor, bool $creating): void
+    {
+        if ($request->hasFile('aadhar_card')) {
             VendorDocument::updateOrCreate(
-                ['vendor_id' => $vendor->id, 'document_type' => 'GST Certificate'],
-                ['file_path' => $request->file('gst_document')->store('documents/vendors', 'public')]
+                ['vendor_id' => $vendor->id, 'document_type' => 'Aadhar Card'],
+                ['file_path' => $request->file('aadhar_card')->store('documents/vendors/aadhar_card', 'public')]
             );
         }
 
-        if ($request->hasFile('license_document')) {
+        if ($request->hasFile('pan_card')) {
             VendorDocument::updateOrCreate(
-                ['vendor_id' => $vendor->id, 'document_type' => 'Shop License'],
-                ['file_path' => $request->file('license_document')->store('documents/vendors', 'public')]
+                ['vendor_id' => $vendor->id, 'document_type' => 'PAN Card'],
+                ['file_path' => $request->file('pan_card')->store('documents/vendors/pan_card', 'public')]
             );
         }
     }

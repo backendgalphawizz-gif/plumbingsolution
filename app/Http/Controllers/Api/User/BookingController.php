@@ -16,6 +16,7 @@ use App\Models\ServiceProvider;
 use App\Models\ServiceProviderReview;
 use App\Models\Transaction;
 use App\Services\CouponService;
+use App\Services\PushNotificationService;
 use App\Support\AdminValidation as V;
 use App\Support\UserApiFormatter;
 use Carbon\Carbon;
@@ -160,6 +161,8 @@ class BookingController extends Controller
 
         $booking->load(['serviceProvider', 'service', 'images', 'payment']);
 
+        app(PushNotificationService::class)->bookingCreated($booking);
+
         return $this->success(UserApiFormatter::booking($booking), 'Booking created.', 201);
     }
 
@@ -193,6 +196,13 @@ class BookingController extends Controller
             'status' => BookingStatus::Cancelled,
             'cancellation_reason' => $data['reason'],
         ]);
+
+        app(PushNotificationService::class)->bookingStatusUpdated(
+            $serviceBooking->fresh(),
+            'Booking Cancelled',
+            "Booking {$serviceBooking->booking_number} was cancelled by the customer.",
+            'booking_cancelled',
+        );
 
         return $this->success(
             UserApiFormatter::booking($serviceBooking->fresh()->load(['serviceProvider', 'images', 'payment'])),

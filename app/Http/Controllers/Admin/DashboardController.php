@@ -7,6 +7,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\ProviderStatus;
 use App\Enums\VendorStatus;
+use App\Http\Controllers\Admin\Concerns\BuildsChartSeries;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Order;
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    use BuildsChartSeries;
+
     public function index()
     {
         $stats = [
@@ -37,14 +40,16 @@ class DashboardController extends Controller
             'pending_provider_approvals' => ServiceProvider::where('status', ProviderStatus::Pending)->count(),
         ];
 
-        $monthlyRevenue = Order::select(
-            DB::raw('DATE_FORMAT(created_at, "%b") as month'),
-            DB::raw('SUM(total_amount) as revenue')
-        )
-            ->where('created_at', '>=', now()->subMonths(4))
-            ->groupBy('month')
-            ->orderByRaw('MIN(created_at)')
+        $chartStart = now()->subDays(29)->startOfDay();
+        $chartEnd = now()->endOfDay();
+
+        $dailySales = Order::whereBetween('created_at', [$chartStart, $chartEnd])
+            ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(total_amount) as total'), DB::raw('COUNT(*) as count'))
+            ->groupBy('date')
+            ->orderBy('date')
             ->get();
+
+        $chartSeries = $this->buildDateSeries($chartStart, $chartEnd, $dailySales);
 
         $pendingProviders = ServiceProvider::where('status', ProviderStatus::Pending)
             ->latest()
@@ -56,6 +61,6 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        return view('admin.dashboard', compact('stats', 'monthlyRevenue', 'pendingProviders', 'recentOrders'));
+        return view('admin.dashboard', compact('stats', 'chartSeries', 'pendingProviders', 'recentOrders'));
     }
 }

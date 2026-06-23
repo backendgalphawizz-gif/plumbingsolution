@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\VendorWithdrawal;
 use App\Services\VendorEarningsService;
+use App\Services\WalletService;
 use App\Support\AdminValidation as V;
 use App\Support\VendorApiFormatter;
 use Illuminate\Http\JsonResponse;
@@ -67,7 +68,7 @@ class EarningsController extends Controller
         ]);
     }
 
-    public function withdraw(Request $request, VendorEarningsService $earnings): JsonResponse
+    public function withdraw(Request $request, VendorEarningsService $earnings, WalletService $wallet): JsonResponse
     {
         $vendor = $this->requireVendor($request);
         if ($vendor instanceof JsonResponse) {
@@ -82,13 +83,15 @@ class EarningsController extends Controller
             'amount' => ['required', 'numeric', 'min:1'],
         ]);
 
-        $walletAmount = $earnings->walletAmount($vendor);
+        $vendor->loadMissing('user');
 
-        if ($data['amount'] > $walletAmount) {
+        if (! $vendor->user || ! $wallet->debit($vendor->user, (float) $data['amount'])) {
             return $this->error('Insufficient wallet balance.', 422);
         }
 
         if (! $vendor->bank_name || ! $vendor->account_number) {
+            $wallet->refund($vendor->user, (float) $data['amount']);
+
             return $this->error('Bank details are required before withdrawal.', 422);
         }
 

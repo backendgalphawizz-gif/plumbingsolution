@@ -12,6 +12,7 @@ use App\Support\AdminValidation as V;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ServiceProviderController extends Controller
@@ -80,56 +81,47 @@ class ServiceProviderController extends Controller
     {
         $data = $this->validated($request);
 
-        $provider = ServiceProvider::create([
-            'name' => $data['name'],
-            'mobile' => $data['mobile'],
-            'skills' => $this->parseSkills($data['skills'] ?? ''),
-            'experience_years' => $data['experience_years'],
-            'service_area' => $data['service_area'] ?? null,
-            'status' => $data['status'],
-            'approved_at' => $data['status'] === ProviderStatus::Approved->value ? now() : null,
-        ]);
+        $provider = ServiceProvider::create($this->providerAttributes($data));
 
+        $this->syncLinkedUserEmail($provider, $data['email'] ?? null);
         $this->storeImages($request, $provider);
-        $this->storeDocument($request, $provider);
+        $this->storeDocuments($request, $provider, creating: true);
 
         return redirect()->route('admin.service-providers.index')->with('success', 'Service provider created successfully.');
     }
 
     public function edit(ServiceProvider $serviceProvider): View
     {
-        $serviceProvider->load('documents');
+        $serviceProvider->load(['documents', 'user']);
 
         return view('admin.service-providers.form', compact('serviceProvider'));
     }
 
     public function update(Request $request, ServiceProvider $serviceProvider): RedirectResponse
     {
-        $data = $this->validated($request);
+        $data = $this->validated($request, $serviceProvider);
 
         $serviceProvider->update([
-            'name' => $data['name'],
-            'mobile' => $data['mobile'],
-            'skills' => $this->parseSkills($data['skills'] ?? ''),
-            'experience_years' => $data['experience_years'],
-            'service_area' => $data['service_area'] ?? null,
-            'status' => $data['status'],
+            ...$this->providerAttributes($data),
             'approved_at' => $data['status'] === ProviderStatus::Approved->value
                 ? ($serviceProvider->approved_at ?? now())
                 : null,
         ]);
 
+        $this->syncLinkedUserEmail($serviceProvider, $data['email'] ?? null);
         $this->storeImages($request, $serviceProvider);
-        $this->storeDocument($request, $serviceProvider);
+        $this->storeDocuments($request, $serviceProvider, creating: false);
 
         return redirect()->route('admin.service-providers.index')->with('success', 'Service provider updated successfully.');
     }
 
     public function show(ServiceProvider $serviceProvider): View
     {
-        $serviceProvider->load(['documents', 'bookings.user', 'services.category']);
+        $serviceProvider->load(['documents', 'user', 'services.category']);
+        $serviceProvider->loadCount('bookings');
+        $bookings = $serviceProvider->bookings()->with('user')->latest()->limit(10)->get();
 
-        return view('admin.service-providers.show', compact('serviceProvider'));
+        return view('admin.service-providers.show', compact('serviceProvider', 'bookings'));
     }
 
     public function approve(ServiceProvider $serviceProvider): RedirectResponse
@@ -154,20 +146,47 @@ class ServiceProviderController extends Controller
         return back()->with('success', 'Provider suspended.');
     }
 
-    private function validated(Request $request): array
+    private function validated(Request $request, ?ServiceProvider $provider = null): array
     {
-        return $request->validate([
+        $creating = ! $provider;
+
+        $rules = array_merge([
             'name' => V::nameRules(),
-            'mobile' => V::mobileRules(required: true),
-            'skills' => ['nullable', 'string', V::maxRule('skills')],
+            'mobile' => array_merge(V::mobileRules(required: true), [
+                Rule::unique('service_providers', 'mobile')->ignore($provider?->id),
+            ]),
+            'email' => V::emailRules(required: false),
+            'address' => V::requiredAddressRules(),
+            'skills' => V::skillsStringRules($creating),
             'experience_years' => ['required', 'integer', 'min:0', 'max:50'],
-            'service_area' => ['nullable', 'string', V::maxRule('service_area')],
             'status' => ['required', 'in:pending,approved,rejected,suspended'],
-            'avatar' => ['nullable', 'image', 'max:2048'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'gallery_images' => ['nullable', 'array'],
-            'gallery_images.*' => ['image', 'max:2048'],
-            'id_document' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
-        ]);
+            'gallery_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'aadhar_front' => V::imageDocRules($creating),
+            'aadhar_back' => V::imageDocRules($creating),
+            'pan_card' => V::imageDocRules($creating),
+        ], V::bankRules($creating));
+
+        return $request->validate($rules);
+    }
+
+    private function providerAttributes(array $data): array
+    {
+        return [
+            'name' => $data['name'],
+            'mobile' => $data['mobile'],
+            'skills' => $this->parseSkills($data['skills'] ?? ''),
+            'experience_years' => $data['experience_years'],
+            'service_area' => $data['address'],
+            'status' => $data['status'],
+            'account_holder_name' => $data['account_holder_name'] ?? null,
+            'account_number' => $data['account_number'] ?? null,
+            'ifsc_code' => isset($data['ifsc_code']) ? strtoupper($data['ifsc_code']) : null,
+            'bank_name' => $data['bank_name'] ?? null,
+            'account_type' => isset($data['account_type']) ? V::normalizeAccountType($data['account_type']) : null,
+            'approved_at' => $data['status'] === ProviderStatus::Approved->value ? now() : null,
+        ];
     }
 
     private function parseSkills(string $skills): array
@@ -175,13 +194,26 @@ class ServiceProviderController extends Controller
         return array_values(array_filter(array_map('trim', explode(',', $skills))));
     }
 
-    private function storeDocument(Request $request, ServiceProvider $provider): void
+    private function syncLinkedUserEmail(ServiceProvider $provider, ?string $email): void
     {
-        if ($request->hasFile('id_document')) {
-            ProviderDocument::updateOrCreate(
-                ['service_provider_id' => $provider->id, 'document_type' => 'ID Proof'],
-                ['file_path' => $request->file('id_document')->store('documents/providers', 'public')]
-            );
+        if (! $provider->user_id || ! $provider->relationLoaded('user')) {
+            $provider->load('user');
+        }
+
+        if ($provider->user && $email !== null) {
+            $provider->user->update(['email' => $email !== '' ? $email : null]);
+        }
+    }
+
+    private function storeDocuments(Request $request, ServiceProvider $provider, bool $creating): void
+    {
+        foreach (['aadhar_front', 'aadhar_back', 'pan_card'] as $type) {
+            if ($request->hasFile($type)) {
+                ProviderDocument::updateOrCreate(
+                    ['service_provider_id' => $provider->id, 'document_type' => $type],
+                    ['file_path' => $request->file($type)->store('documents/providers/'.$type, 'public')]
+                );
+            }
         }
     }
 

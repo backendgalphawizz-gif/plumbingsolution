@@ -74,23 +74,26 @@ class BulkOrderController extends Controller
 
     public function createQuotation(Request $request, BulkOrder $bulkOrder, QuotationService $quotations): RedirectResponse
     {
+        if (! $bulkOrder->canReceiveQuotation()) {
+            return back()->with('error', 'A quotation has already been sent for this bulk order.');
+        }
+
         $data = $request->validate($quotations->storeRules());
 
-        $quotations->create($bulkOrder, $data, auth('admin')->id());
+        $quotations->create($bulkOrder, $data, auth('admin')->id(), sendImmediately: true);
 
-        return back()->with('success', 'Quotation created.');
+        return back()->with('success', 'Quotation sent to customer.');
     }
 
-    public function sendQuotation(BulkOrder $bulkOrder, Quotation $quotation): RedirectResponse
+    public function sendQuotation(BulkOrder $bulkOrder, Quotation $quotation, QuotationService $quotations): RedirectResponse
     {
         abort_if($quotation->bulk_order_id !== $bulkOrder->id, 404);
 
-        if ($quotation->status !== 'draft') {
-            return back()->with('error', 'Only draft quotations can be sent.');
+        try {
+            $quotations->send($quotation, $bulkOrder);
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
         }
-
-        $quotation->update(['status' => 'sent', 'sent_at' => now()]);
-        $bulkOrder->update(['status' => 'quotation_sent']);
 
         return back()->with('success', 'Quotation sent to customer.');
     }

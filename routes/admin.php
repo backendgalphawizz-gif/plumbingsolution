@@ -125,6 +125,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
         Route::put('settings', [SettingController::class, 'update'])->name('settings.update');
         Route::put('settings/cms/{cmsPage}', [SettingController::class, 'updateCms'])->name('settings.cms.update');
+        Route::post('settings/faqs', [SettingController::class, 'storeFaq'])->name('settings.faqs.store');
+        Route::put('settings/faqs/{faq}', [SettingController::class, 'updateFaq'])->name('settings.faqs.update');
+        Route::delete('settings/faqs/{faq}', [SettingController::class, 'destroyFaq'])->name('settings.faqs.destroy');
 
         Route::get('profile', [ProfileController::class, 'edit'])->name('profile.edit');
         Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');

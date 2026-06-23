@@ -26,5 +26,26 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Illuminate\Database\QueryException $e, \Illuminate\Http\Request $request) {
+            if (! $request->is('admin') && ! $request->is('admin/*')) {
+                return null;
+            }
+
+            $message = 'Something went wrong while saving. Please check your input and try again.';
+
+            if (str_contains($e->getMessage(), 'Data too long')) {
+                $message = 'One or more fields contain too much text. Please shorten your input and try again.';
+                if (preg_match("/column '([^']+)'/", $e->getMessage(), $matches)) {
+                    $field = str_replace('_', ' ', $matches[1]);
+                    $message = 'The '.ucfirst($field).' field is too long. Please shorten your input.';
+                }
+            } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $message = 'This value already exists. Please use a different one.';
+            }
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', $message);
+        });
     })->create();

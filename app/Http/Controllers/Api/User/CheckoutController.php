@@ -15,6 +15,7 @@ use App\Models\Payment;
 use App\Models\Transaction;
 use App\Models\UserAddress;
 use App\Services\CouponService;
+use App\Services\PushNotificationService;
 use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -148,6 +149,8 @@ class CheckoutController extends Controller
         $user->cartItems()->delete();
 
         $order->load(['items', 'vendor', 'payment']);
+
+        app(PushNotificationService::class)->orderPlaced($order);
 
         $response = [
             'order' => UserApiFormatter::order($order, detailed: true),

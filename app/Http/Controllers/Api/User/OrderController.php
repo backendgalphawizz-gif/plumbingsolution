@@ -8,6 +8,7 @@ use App\Http\Traits\ApiResponse;
 use App\Models\BulkOrder;
 use App\Models\Order;
 use App\Services\OrderInvoiceService;
+use App\Services\PushNotificationService;
 use App\Support\AdminValidation as V;
 use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
@@ -34,6 +35,9 @@ class OrderController extends Controller
             $bulkOrders = $request->user()->bulkOrders()
                 ->with(['files', 'quotations'])
                 ->where('status', 'quotation_sent')
+                ->whereHas('quotations', fn ($q) => $q
+                    ->where('status', 'sent')
+                    ->whereDate('valid_until', '>=', now()->toDateString()))
                 ->latest()
                 ->paginate($perPage);
 
@@ -162,7 +166,13 @@ class OrderController extends Controller
             'cancellation_reason' => $data['reason'],
         ]);
 
-        $order->load(['items', 'vendor', 'payment']);
+        $order->load(['items', 'vendor.user', 'payment']);
+
+        app(PushNotificationService::class)->orderStatusUpdated(
+            $order,
+            'cancelled',
+            $data['reason'],
+        );
 
         return $this->success(
             array_merge(UserApiFormatter::order($order, detailed: true), ['type' => 'order']),

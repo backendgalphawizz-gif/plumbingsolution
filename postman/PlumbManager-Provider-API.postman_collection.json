@@ -11,9 +11,11 @@
 		{ "key": "mobile", "value": "9988700001" },
 		{ "key": "register_mobile", "value": "9988799999" },
 		{ "key": "otp", "value": "" },
+		{ "key": "fcm_token", "value": "" },
 		{ "key": "booking_id", "value": "1" },
 		{ "key": "service_id", "value": "1" },
-		{ "key": "category_id", "value": "1" }
+		{ "key": "category_id", "value": "1" },
+		{ "key": "notification_id", "value": "1" }
 	],
 	"auth": {
 		"type": "bearer",
@@ -27,12 +29,12 @@
 				{
 					"name": "Send OTP (Provider Login)",
 					"event": [{ "listen": "test", "script": { "exec": ["const j=pm.response.json();if(j.data?.otp){pm.collectionVariables.set('otp',String(j.data.otp));pm.environment.set('otp',String(j.data.otp));}","pm.test('OK',()=>pm.response.to.have.status(200));"], "type": "text/javascript" }}],
-					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"type\": \"login\"\n}" }, "url": "{{base_url}}/api/v1/auth/send-otp" }
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"type\": \"login\",\n  \"app\": \"provider\"\n}" }, "url": "{{base_url}}/api/v1/auth/send-otp" }
 				},
 				{
 					"name": "Verify OTP (Provider Login)",
 					"event": [{ "listen": "test", "script": { "exec": ["const j=pm.response.json();if(j.data?.token){pm.collectionVariables.set('token',j.data.token);pm.environment.set('token',j.data.token);}","pm.test('OK',()=>pm.response.to.have.status(200));"], "type": "text/javascript" }}],
-					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"login\"\n}" }, "url": "{{base_url}}/api/v1/auth/verify-otp" }
+					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"login\",\n  \"app\": \"provider\",\n  \"fcm_token\": \"{{fcm_token}}\"\n}" }, "url": "{{base_url}}/api/v1/auth/verify-otp" }
 				},
 				{
 					"name": "Register (Provider)",
@@ -52,7 +54,8 @@
 						{ "key": "account_type", "value": "savings", "type": "text" },
 						{ "key": "aadhar_front", "type": "file", "src": [] },
 						{ "key": "aadhar_back", "type": "file", "src": [] },
-						{ "key": "pan_card", "type": "file", "src": [] }
+						{ "key": "pan_card", "type": "file", "src": [] },
+						{ "key": "fcm_token", "value": "{{fcm_token}}", "type": "text" }
 					] }, "url": "{{base_url}}/api/v1/auth/register" }
 				},
 				{ "name": "Logout", "request": { "method": "POST", "url": "{{base_url}}/api/v1/auth/logout" } }
@@ -95,6 +98,10 @@
 					{ "key": "is_available", "value": "true", "type": "text" },
 					{ "key": "images[]", "type": "file", "src": [] }
 				] }, "url": "{{base_url}}/api/v1/services/{{service_id}}" } },
+				{ "name": "Set Service Availability", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": 1\n}" }, "url": "{{base_url}}/api/v1/services/{{service_id}}/availability",
+					"description": "Toggle service availability with one API. Send status: 1 = Available, 0 = Unavailable. Response includes status, is_available, and availability_label." } },
+				{ "name": "Mark Service Available (legacy)", "request": { "method": "POST", "url": "{{base_url}}/api/v1/services/{{service_id}}/available" } },
+				{ "name": "Mark Service Unavailable (legacy)", "request": { "method": "POST", "url": "{{base_url}}/api/v1/services/{{service_id}}/unavailable" } },
 				{ "name": "Delete Service", "request": { "method": "DELETE", "url": "{{base_url}}/api/v1/services/{{service_id}}" } }
 			]
 		},
@@ -102,12 +109,36 @@
 			"name": "04 — Profile & Earnings",
 			"item": [
 				{ "name": "Get Profile", "request": { "method": "GET", "url": "{{base_url}}/api/v1/profile" } },
+				{ "name": "Update Profile", "request": { "method": "POST", "body": { "mode": "formdata", "formdata": [
+					{ "key": "name", "value": "Arjun Provider", "type": "text" },
+					{ "key": "mobile", "value": "{{mobile}}", "type": "text" },
+					{ "key": "email", "value": "arjun@example.com", "type": "text" },
+					{ "key": "address", "value": "45, service colony, Indore", "type": "text" },
+					{ "key": "service_area", "value": "Indore West", "type": "text" },
+					{ "key": "skills[0]", "value": "Pipe Repair", "type": "text" },
+					{ "key": "skills[1]", "value": "Leak Fixing", "type": "text" },
+					{ "key": "experience", "value": "5", "type": "text" },
+					{ "key": "account_holder_name", "value": "Arjun Provider", "type": "text" },
+					{ "key": "account_number", "value": "123456789012", "type": "text" },
+					{ "key": "ifsc_code", "value": "SBIN0001234", "type": "text" },
+					{ "key": "bank_name", "value": "State Bank of India", "type": "text" },
+					{ "key": "account_type", "value": "savings", "type": "text" },
+					{ "key": "avatar", "type": "file", "src": [] }
+				] }, "url": "{{base_url}}/api/v1/profile" } },
 				{ "name": "Personal Details", "request": { "method": "GET", "url": "{{base_url}}/api/v1/profile/personal-details" } },
 				{ "name": "Bank Details", "request": { "method": "GET", "url": "{{base_url}}/api/v1/profile/bank-details" } },
 				{ "name": "Skills & Experience", "request": { "method": "GET", "url": "{{base_url}}/api/v1/profile/skills-details" } },
 				{ "name": "Payments & Earnings", "request": { "method": "GET", "url": "{{base_url}}/api/v1/earnings" } },
 				{ "name": "Withdraw Request", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"amount\": 2200\n}" }, "url": "{{base_url}}/api/v1/earnings/withdraw" } },
-				{ "name": "App Config", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/v1/config" } }
+				{ "name": "App Config", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/v1/config",
+					"description": "Returns user + provider config in one response: data.user and data.provider (each with app, faqs, privacy_policy, terms_and_conditions)." } }
+			]
+		},
+		{
+			"name": "05 — Notifications",
+			"item": [
+				{ "name": "List Notifications", "request": { "method": "GET", "url": "{{base_url}}/api/v1/notifications" } },
+				{ "name": "Mark as Read", "request": { "method": "POST", "url": "{{base_url}}/api/v1/notifications/{{notification_id}}/read" } }
 			]
 		}
 	]

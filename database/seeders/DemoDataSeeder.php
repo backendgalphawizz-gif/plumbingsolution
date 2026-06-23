@@ -398,7 +398,13 @@ class DemoDataSeeder extends Seeder
                     'bulk_order_id' => $bulkOrder->id,
                     'quotation_number' => 'QT-'.Str::upper(Str::random(6)),
                     'amount' => rand(50000, 200000),
-                    'details' => 'Quotation for bulk plumbing supplies including pipes, fittings, and fixtures.',
+                    'details' => [
+                        'items' => [
+                            ['product_name' => 'PVC Pipes', 'price' => 5000, 'quantity' => 10, 'total' => 50000],
+                        ],
+                        'notes' => 'Quotation for bulk plumbing supplies.',
+                    ],
+                    'valid_until' => now()->addDays(14)->toDateString(),
                     'status' => $bulkStatus === 'quotation_generated' ? 'draft' : 'sent',
                     'created_by' => $adminId,
                     'sent_at' => in_array($bulkStatus, ['quotation_sent', 'customer_approved'], true) ? now()->subDays(2) : null,

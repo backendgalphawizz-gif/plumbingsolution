@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AuthOtpController;
 use App\Http\Controllers\Api\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Api\Admin\BannerController as AdminBannerController;
 use App\Http\Controllers\Api\Admin\BulkOrderController;
@@ -59,8 +60,6 @@ use App\Http\Controllers\Api\Vendor\ProfileController as VendorProfileController
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('user')->group(function () {
-    Route::post('auth/send-otp', [UserAuthController::class, 'sendOtp']);
-    Route::post('auth/verify-otp', [UserAuthController::class, 'verifyOtp']);
     Route::post('auth/login', [UserAuthController::class, 'login']);
     Route::post('auth/register', [UserAuthController::class, 'register']);
 
@@ -139,8 +138,8 @@ Route::prefix('user')->group(function () {
 Route::prefix('v1')->group(function () {
     Route::get('config', [ProviderConfigController::class, 'index']);
 
-    Route::post('auth/send-otp', [ProviderAuthController::class, 'sendOtp']);
-    Route::post('auth/verify-otp', [ProviderAuthController::class, 'verifyOtp']);
+    Route::post('auth/send-otp', [AuthOtpController::class, 'sendOtp']);
+    Route::post('auth/verify-otp', [AuthOtpController::class, 'verifyOtp']);
     Route::post('auth/login', [ProviderAuthController::class, 'login']);
     Route::post('auth/register', [ProviderAuthController::class, 'register']);
 
@@ -161,11 +160,16 @@ Route::prefix('v1')->group(function () {
         Route::get('services/{service}', [ProviderServiceController::class, 'show']);
         Route::put('services/{service}', [ProviderServiceController::class, 'update']);
         Route::post('services/{service}', [ProviderServiceController::class, 'update']);
+        Route::post('services/{service}/availability', [ProviderServiceController::class, 'updateAvailability']);
+        Route::post('services/{service}/available', [ProviderServiceController::class, 'available']);
+        Route::post('services/{service}/unavailable', [ProviderServiceController::class, 'unavailable']);
         Route::delete('services/{service}', [ProviderServiceController::class, 'destroy']);
 
         Route::get('lookups/categories', [ProviderLookupController::class, 'categories']);
 
         Route::get('profile', [ProviderProfileController::class, 'show']);
+        Route::post('profile', [ProviderProfileController::class, 'update']);
+        Route::put('profile', [ProviderProfileController::class, 'update']);
         Route::get('profile/personal-details', [ProviderProfileController::class, 'personalDetails']);
         Route::put('profile/personal-details', [ProviderProfileController::class, 'updatePersonalDetails']);
         Route::post('profile/personal-details', [ProviderProfileController::class, 'updatePersonalDetails']);
@@ -178,6 +182,9 @@ Route::prefix('v1')->group(function () {
 
         Route::get('earnings', [ProviderEarningsController::class, 'index']);
         Route::post('earnings/withdraw', [ProviderEarningsController::class, 'withdraw']);
+
+        Route::get('notifications', [NotificationController::class, 'index']);
+        Route::post('notifications/{userNotification}/read', [NotificationController::class, 'markRead']);
     });
 });
 
@@ -211,6 +218,8 @@ Route::prefix('v2')->group(function () {
         Route::get('lookups/categories', [VendorLookupController::class, 'categories']);
 
         Route::get('profile', [VendorProfileController::class, 'show']);
+        Route::post('profile', [VendorProfileController::class, 'update']);
+        Route::put('profile', [VendorProfileController::class, 'update']);
         Route::get('profile/owner-details', [VendorProfileController::class, 'ownerDetails']);
         Route::put('profile/owner-details', [VendorProfileController::class, 'updateOwnerDetails']);
         Route::post('profile/owner-details', [VendorProfileController::class, 'updateOwnerDetails']);
@@ -220,6 +229,9 @@ Route::prefix('v2')->group(function () {
 
         Route::get('earnings', [VendorEarningsController::class, 'index']);
         Route::post('earnings/withdraw', [VendorEarningsController::class, 'withdraw']);
+
+        Route::get('notifications', [NotificationController::class, 'index']);
+        Route::post('notifications/{userNotification}/read', [NotificationController::class, 'markRead']);
     });
 });
 

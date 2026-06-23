@@ -1,38 +1,164 @@
 @extends('admin.layouts.app')
 @section('title', 'Settings')
 @section('page-title', 'Settings')
-@section('page-subtitle', 'App configuration, commission rates and CMS pages')
+@section('page-subtitle', 'App configuration, legal pages and FAQs')
 
 @section('content')
-<div class="grid gap-6 lg:grid-cols-2">
-    <form action="{{ route('admin.settings.update') }}" method="POST" class="form-card">@csrf @method('PUT')
-        <div class="form-section-title">App & Commission Settings</div>
-        <div class="form-section-desc">Configure platform-wide settings and fee structures.</div>
-        @foreach($settings as $group => $items)
-            <div class="mb-5">
-                <p class="admin-label mb-3">{{ $group }}</p>
-                @foreach($items as $setting)
-                    <div class="mb-3">
-                        <label class="admin-label normal-case">{{ str_replace('_', ' ', ucfirst($setting->key)) }}</label>
-                        <input name="settings[{{ $group }}][{{ $setting->key }}]" value="{{ $setting->value }}" maxlength="{{ config('admin.limits.setting_value') }}" class="admin-input">
-                    </div>
-                @endforeach
-            </div>
-        @endforeach
-        <button class="btn btn-primary">Save Settings</button>
-    </form>
+@php
+    $tabs = [
+        'general' => ['label' => 'General', 'icon' => 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z'],
+        'payments' => ['label' => 'Payments', 'icon' => 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z'],
+        'commission' => ['label' => 'Commission & Tax', 'icon' => 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z'],
+        'privacy-policy' => ['label' => 'Privacy Policy', 'icon' => 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'],
+        'terms-and-conditions' => ['label' => 'Terms & Conditions', 'icon' => 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'],
+        'user-faqs' => ['label' => 'User FAQs', 'icon' => 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'],
+        'vendor-faqs' => ['label' => 'Vendor FAQs', 'icon' => 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'],
+        'provider-faqs' => ['label' => 'Provider FAQs', 'icon' => 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'],
+    ];
+@endphp
 
-    <div class="space-y-4">
-        @foreach($cmsPages as $page)
-            <form action="{{ route('admin.settings.cms.update', $page) }}" method="POST" class="form-card">@csrf @method('PUT')
-                <div class="form-section-title">{{ $page->title }}</div>
-                <div class="space-y-3">
-                    @include('admin.partials.form-field', ['label' => 'Page Title', 'name' => 'title', 'limit' => 'cms_title', 'value' => old('title', $page->title), 'required' => true])
-                    @include('admin.partials.form-field', ['label' => 'Content', 'name' => 'content', 'type' => 'textarea', 'limit' => 'cms_content', 'value' => old('content', $page->content), 'rows' => 4])
-                </div>
-                <button class="btn btn-secondary btn-sm mt-4">Update CMS Page</button>
-            </form>
+<div class="settings-page" x-data="{ tab: @js($activeTab) }">
+    <div class="settings-tab-bar">
+        @foreach($tabs as $key => $tab)
+            <button
+                type="button"
+                class="settings-tab"
+                :class="{ 'is-active': tab === @js($key) }"
+                @click="tab = @js($key)"
+            >
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="{{ $tab['icon'] }}"/></svg>
+                <span>{{ $tab['label'] }}</span>
+            </button>
         @endforeach
+    </div>
+
+    <div class="settings-tab-panels">
+        <div x-show="tab === 'general'" x-cloak>
+            <div class="settings-stack">
+                @include('admin.settings.partials.settings-group-form', [
+                    'title' => 'General Settings',
+                    'description' => 'App name and support contact shown across customer and vendor apps.',
+                    'action' => route('admin.settings.update'),
+                    'returnTab' => 'general',
+                    'group' => 'app',
+                    'items' => $settings->get('app', collect()),
+                ])
+                @if($settings->get('notification', collect())->isNotEmpty())
+                    @include('admin.settings.partials.settings-group-form', [
+                        'title' => 'Notifications',
+                        'description' => 'Push notification settings for the platform.',
+                        'action' => route('admin.settings.update'),
+                        'returnTab' => 'general',
+                        'group' => 'notification',
+                        'items' => $settings->get('notification', collect()),
+                        'submitLabel' => 'Save Notifications',
+                    ])
+                @endif
+            </div>
+        </div>
+
+        <div x-show="tab === 'payments'" x-cloak>
+            @include('admin.settings.partials.settings-group-form', [
+                'title' => 'Payment Methods',
+                'description' => 'Enable or disable payment gateways available at checkout.',
+                'action' => route('admin.settings.update'),
+                'returnTab' => 'payments',
+                'group' => 'payment',
+                'items' => $settings->get('payment', collect()),
+            ])
+        </div>
+
+        <div x-show="tab === 'commission'" x-cloak>
+            <div class="settings-stack">
+                @include('admin.settings.partials.settings-group-form', [
+                    'title' => 'Commission Rates',
+                    'description' => 'Platform commission percentages for vendors and service providers.',
+                    'action' => route('admin.settings.update'),
+                    'returnTab' => 'commission',
+                    'group' => 'commission',
+                    'items' => $settings->get('commission', collect()),
+                ])
+                @include('admin.settings.partials.settings-group-form', [
+                    'title' => 'Tax Settings',
+                    'description' => 'Tax configuration applied to orders and invoices.',
+                    'action' => route('admin.settings.update'),
+                    'returnTab' => 'commission',
+                    'group' => 'tax',
+                    'items' => $settings->get('tax', collect()),
+                    'submitLabel' => 'Save Tax Settings',
+                ])
+            </div>
+        </div>
+
+        <div x-show="tab === 'privacy-policy'" x-cloak>
+            @include('admin.settings.partials.cms-legal-panel', [
+                'slug' => 'privacy-policy',
+                'pages' => $privacyPages,
+                'returnTab' => 'privacy-policy',
+                'title' => 'Privacy Policy',
+                'description' => 'Manage separate privacy policies for user, vendor and provider apps.',
+                'activeAudience' => $activeAudience,
+            ])
+        </div>
+
+        <div x-show="tab === 'terms-and-conditions'" x-cloak>
+            @include('admin.settings.partials.cms-legal-panel', [
+                'slug' => 'terms-and-conditions',
+                'pages' => $termsPages,
+                'returnTab' => 'terms-and-conditions',
+                'title' => 'Terms & Conditions',
+                'description' => 'Manage separate terms and conditions for user, vendor and provider apps.',
+                'activeAudience' => $activeAudience,
+            ])
+        </div>
+
+        <div x-show="tab === 'user-faqs'" x-cloak>
+            @include('admin.settings.partials.faq-panel', [
+                'audience' => 'user',
+                'faqs' => $userFaqs,
+                'title' => 'User FAQ',
+                'description' => 'Frequently asked questions for customers in the user mobile app.',
+            ])
+        </div>
+
+        <div x-show="tab === 'vendor-faqs'" x-cloak>
+            @include('admin.settings.partials.faq-panel', [
+                'audience' => 'vendor',
+                'faqs' => $vendorFaqs,
+                'title' => 'Vendor FAQ',
+                'description' => 'Frequently asked questions for product vendors in the vendor app.',
+            ])
+        </div>
+
+        <div x-show="tab === 'provider-faqs'" x-cloak>
+            @include('admin.settings.partials.faq-panel', [
+                'audience' => 'provider',
+                'faqs' => $providerFaqs,
+                'title' => 'Provider FAQ',
+                'description' => 'Frequently asked questions for service providers in the provider app.',
+            ])
+        </div>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    const audience = params.get('audience');
+    const root = document.querySelector('.settings-page');
+    if (!root || !window.Alpine) return;
+
+    const data = Alpine.$data(root);
+    if (tab) data.tab = tab;
+
+    if (audience) {
+        document.querySelectorAll('.settings-legal-panel').forEach((panel) => {
+            Alpine.$data(panel).audience = audience;
+        });
+    }
+});
+</script>
+@endpush

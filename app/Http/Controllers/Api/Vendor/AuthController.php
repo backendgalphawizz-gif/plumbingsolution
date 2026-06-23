@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Vendor;
 
 use App\Enums\OtpType;
 use App\Enums\UserRole;
+use App\Http\Controllers\Api\Concerns\RegistersFcmToken;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\User;
@@ -19,7 +20,7 @@ use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, RegistersFcmToken;
 
     public function sendOtp(Request $request, OtpService $otp): JsonResponse
     {
@@ -57,11 +58,11 @@ class AuthController extends Controller
 
     public function verifyOtp(Request $request, OtpService $otp): JsonResponse
     {
-        $data = $request->validate([
+        $data = $request->validate(array_merge([
             'mobile' => V::mobileRules(required: true),
             'otp' => ['required', 'digits:4'],
             'type' => ['required', Rule::enum(OtpType::class)],
-        ]);
+        ], $this->fcmTokenRules()));
 
         $type = OtpType::from($data['type']);
 
@@ -74,7 +75,7 @@ class AuthController extends Controller
         }
 
         if ($type->isLogin()) {
-            return $this->loginResponse($data['mobile']);
+            return $this->loginResponse($data['mobile'], $data['fcm_token'] ?? null);
         }
 
         return $this->success([
@@ -84,16 +85,16 @@ class AuthController extends Controller
 
     public function login(Request $request, OtpService $otp): JsonResponse
     {
-        $data = $request->validate([
+        $data = $request->validate(array_merge([
             'mobile' => V::mobileRules(required: true),
             'otp' => ['required', 'digits:4'],
-        ]);
+        ], $this->fcmTokenRules()));
 
         if (! $otp->verify($data['mobile'], (string) $data['otp'], OtpType::VendorLogin)) {
             return $this->error('Invalid or expired OTP.', 422);
         }
 
-        return $this->loginResponse($data['mobile']);
+        return $this->loginResponse($data['mobile'], $data['fcm_token'] ?? null);
     }
 
     public function register(Request $request, OtpService $otp, VendorRegistrationService $vendorRegistration): JsonResponse
@@ -102,7 +103,7 @@ class AuthController extends Controller
             return $this->error('Please verify your mobile number with OTP first.', 422);
         }
 
-        $data = $request->validate($vendorRegistration->rules());
+        $data = $request->validate(array_merge($vendorRegistration->rules(), $this->fcmTokenRules()));
 
         if (User::where('mobile', $data['mobile'])->exists()) {
             return $this->error('Mobile number is already registered.', 422);
@@ -122,6 +123,8 @@ class AuthController extends Controller
 
         $otp->consumeVerification($data['mobile'], OtpType::VendorRegister);
 
+        $this->saveFcmToken($user, $data['fcm_token'] ?? null);
+
         $token = $user->createToken('vendor-app', ['vendor'])->plainTextToken;
 
         return $this->success([
@@ -132,12 +135,13 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
+        $this->clearFcmToken($request->user());
         $request->user()->currentAccessToken()?->delete();
 
         return $this->success(null, 'Logged out successfully.');
     }
 
-    private function loginResponse(string $mobile): JsonResponse
+    private function loginResponse(string $mobile, ?string $fcmToken = null): JsonResponse
     {
         $user = User::with('vendor')
             ->where('mobile', $mobile)
@@ -154,6 +158,8 @@ class AuthController extends Controller
         if ($user->is_blocked) {
             return $this->error('Your account has been blocked.', 403, ['reason' => $user->block_reason]);
         }
+
+        $this->saveFcmToken($user, $fcmToken);
 
         $token = $user->createToken('vendor-app', ['vendor'])->plainTextToken;
 

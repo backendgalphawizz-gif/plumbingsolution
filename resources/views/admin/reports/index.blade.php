@@ -14,7 +14,9 @@
 .chart-legend { display: flex; flex-wrap: wrap; gap: 16px; }
 .chart-legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8125rem; font-weight: 600; color: #64748b; }
 .chart-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
-.chart-stat-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 8px; background: #f8fafc; }
+.chart-stat-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 8px; background: #f8fafc; border-left: 3px solid transparent; }
+.chart-stat-label { display: inline-flex; align-items: center; gap: 8px; font-size: 0.875rem; color: #475569; text-transform: capitalize; }
+.chart-stat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 2px #fff; }
 </style>
 
 <div class="stat-tabs mb-6">
@@ -87,24 +89,20 @@
     </div>
 </div>
 
-{{-- Main Revenue Chart --}}
-<div class="chart-panel mb-6">
-    <div class="chart-panel-header">
-        <div>
-            <h2 class="chart-panel-title">Revenue & Orders Trend</h2>
-            <p class="chart-panel-sub">Daily performance across the selected period</p>
-        </div>
-        <div class="chart-legend">
-            <span class="chart-legend-item"><span class="chart-legend-dot bg-emerald-500"></span> Revenue (₹)</span>
-            <span class="chart-legend-item"><span class="chart-legend-dot bg-blue-500"></span> Orders</span>
-        </div>
-    </div>
-    <div class="chart-canvas-wrap">
-        <canvas id="revenueChart" height="120"></canvas>
-    </div>
-</div>
+@include('admin.partials.revenue-trend-chart', [
+    'chartSeries' => $chartSeries,
+    'canvasId' => 'revenueChart',
+    'title' => 'Revenue & Orders Trend',
+    'subtitle' => 'Daily performance across the selected period',
+    'class' => 'mb-6',
+])
 
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+    @php
+        $orderStatusColors = collect($statusChart['labels'] ?? [])->mapWithKeys(
+            fn ($label, $i) => [strtolower(str_replace(' ', '_', $label)) => $statusChart['backgrounds'][$i] ?? '#94a3b8']
+        );
+    @endphp
     {{-- Orders by Status Donut --}}
     <div class="chart-panel">
         <div class="chart-panel-header">
@@ -122,9 +120,15 @@
             </div>
             <div class="space-y-2">
                 @forelse($ordersByStatus as $row)
-                    @php $status = is_object($row->status) ? $row->status->value : $row->status; @endphp
-                    <div class="chart-stat-row">
-                        <span class="capitalize text-sm text-slate-600">{{ str_replace('_', ' ', $status) }}</span>
+                    @php
+                        $status = is_object($row->status) ? $row->status->value : $row->status;
+                        $statusColor = $orderStatusColors[$status] ?? '#94a3b8';
+                    @endphp
+                    <div class="chart-stat-row" style="border-left-color: {{ $statusColor }};">
+                        <span class="chart-stat-label">
+                            <span class="chart-stat-dot" style="background-color: {{ $statusColor }}"></span>
+                            {{ str_replace('_', ' ', $status) }}
+                        </span>
                         <div class="text-right">
                             <span class="font-bold text-slate-800">{{ $row->count }}</span>
                             <span class="text-xs text-slate-400">· ₹{{ number_format($row->total, 0) }}</span>
@@ -181,7 +185,7 @@
     </table>
 @endcomponent
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+@push('scripts')
 <script>
 (function () {
     const font = "'Plus Jakarta Sans', system-ui, sans-serif";
@@ -193,93 +197,8 @@
     Chart.defaults.animation.duration = 900;
     Chart.defaults.animation.easing = 'easeOutQuart';
 
-    const series = @json($chartSeries);
     const statusChart = @json($statusChart);
     const bookingChart = @json($bookingChart);
-
-    const revenueCtx = document.getElementById('revenueChart');
-    if (revenueCtx) {
-        const gradient = revenueCtx.getContext('2d').createLinearGradient(0, 0, 0, 280);
-        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
-        gradient.addColorStop(1, 'rgba(16, 185, 129, 0.02)');
-
-        new Chart(revenueCtx, {
-            type: 'line',
-            data: {
-                labels: series.labels,
-                datasets: [
-                    {
-                        label: 'Revenue (₹)',
-                        data: series.revenue,
-                        borderColor: '#10b981',
-                        backgroundColor: gradient,
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 4,
-                        pointHoverRadius: 7,
-                        pointBackgroundColor: '#fff',
-                        pointBorderColor: '#10b981',
-                        pointBorderWidth: 2,
-                        yAxisID: 'y',
-                    },
-                    {
-                        label: 'Orders',
-                        data: series.orders,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                        borderWidth: 2.5,
-                        borderDash: [6, 4],
-                        fill: false,
-                        tension: 0.35,
-                        pointRadius: 3,
-                        pointHoverRadius: 6,
-                        pointBackgroundColor: '#3b82f6',
-                        yAxisID: 'y1',
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#0f172a',
-                        titleFont: { weight: '700', size: 13 },
-                        bodyFont: { size: 12 },
-                        padding: 12,
-                        cornerRadius: 10,
-                        callbacks: {
-                            label(ctx) {
-                                if (ctx.datasetIndex === 0) return ' ₹' + ctx.parsed.y.toLocaleString('en-IN');
-                                return ' ' + ctx.parsed.y + ' orders';
-                            },
-                        },
-                    },
-                },
-                scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
-                    },
-                    y: {
-                        position: 'left',
-                        grid: { color: gridColor },
-                        ticks: {
-                            callback: v => '₹' + v.toLocaleString('en-IN'),
-                        },
-                    },
-                    y1: {
-                        position: 'right',
-                        grid: { drawOnChartArea: false },
-                        ticks: { stepSize: 1 },
-                    },
-                },
-            },
-        });
-    }
 
     const ordersCtx = document.getElementById('ordersStatusChart');
     if (ordersCtx && statusChart.labels.length) {
@@ -355,4 +274,5 @@
     }
 })();
 </script>
+@endpush
 @endsection

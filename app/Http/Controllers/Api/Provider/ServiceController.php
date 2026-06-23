@@ -118,6 +118,50 @@ class ServiceController extends Controller
         return $this->success(ProviderApiFormatter::service($serviceModel, $provider, detailed: true), 'Service updated.');
     }
 
+    public function available(Request $request, int $service, ProviderServiceManagement $services): JsonResponse
+    {
+        $request->merge(['status' => 1]);
+
+        return $this->updateAvailability($request, $service, $services);
+    }
+
+    public function unavailable(Request $request, int $service, ProviderServiceManagement $services): JsonResponse
+    {
+        $request->merge(['status' => 0]);
+
+        return $this->updateAvailability($request, $service, $services);
+    }
+
+    public function updateAvailability(Request $request, int $service, ProviderServiceManagement $services): JsonResponse
+    {
+        $provider = $this->requireProvider($request);
+        if ($provider instanceof JsonResponse) {
+            return $provider;
+        }
+
+        if ($response = $this->ensureApproved($provider)) {
+            return $response;
+        }
+
+        $data = $request->validate($services->availabilityRules());
+        $isAvailable = (int) $data['status'] === 1;
+
+        $serviceModel = $services->ownedBy($provider, $service);
+
+        if (! $serviceModel) {
+            return $this->error('Service not found.', 404);
+        }
+
+        $serviceModel = $services->setAvailability($provider, $serviceModel, $isAvailable);
+
+        $provider->loadAvg('reviews', 'rating');
+        $provider->loadCount('reviews');
+
+        $message = $isAvailable ? 'Service marked as available.' : 'Service marked as unavailable.';
+
+        return $this->success(ProviderApiFormatter::service($serviceModel, $provider, detailed: true), $message);
+    }
+
     public function destroy(Request $request, int $service, ProviderServiceManagement $services): JsonResponse
     {
         $provider = $this->requireProvider($request);
