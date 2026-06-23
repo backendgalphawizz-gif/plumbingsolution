@@ -25,6 +25,7 @@ class ProviderApiFormatter
             'role' => $user->role?->value,
             'avatar' => $user->avatar ? asset('storage/'.$user->avatar) : null,
             'address' => $user->address,
+            'wallet_balance' => round((float) $user->wallet_balance, 2),
         ];
 
         if ($user->relationLoaded('serviceProvider') && $user->serviceProvider) {
@@ -181,9 +182,28 @@ class ProviderApiFormatter
                 'status' => strtoupper($booking->payment->status->value),
                 'amount' => (float) $booking->payment->amount,
             ] : null;
+            $data['has_review'] = $booking->relationLoaded('review') && $booking->review !== null;
+            $data['rating'] = $booking->relationLoaded('review') && $booking->review
+                ? $booking->review->rating
+                : null;
+            $data['review'] = $booking->relationLoaded('review') && $booking->review
+                ? self::bookingReview($booking->review)
+                : null;
         }
 
         return $data;
+    }
+
+    public static function bookingReview(ServiceProviderReview $review): array
+    {
+        return [
+            'id' => $review->id,
+            'rating' => $review->rating,
+            'comment' => $review->comment,
+            'customer_name' => $review->relationLoaded('user') ? $review->user->name : null,
+            'created_at' => $review->created_at->format('M d, Y'),
+            'created_at_label' => $review->created_at->format('M d, Y • g:i A'),
+        ];
     }
 
     public static function service(Service $service, ServiceProvider $provider, bool $detailed = false): array
@@ -203,6 +223,7 @@ class ProviderApiFormatter
             'category_id' => $service->service_category_id,
             'price' => $price,
             'is_available' => (bool) ($pivot->is_available ?? true),
+            'status' => ($pivot->is_available ?? true) ? 1 : 0,
             'availability_label' => ($pivot->is_available ?? true) ? 'Available' : 'Unavailable',
             'image' => $primaryImage
                 ? asset('storage/'.$primaryImage->image_path)

@@ -115,25 +115,64 @@ class UserAppSeeder extends Seeder
             [
                 'question' => 'How do I book a plumbing service?',
                 'answer' => 'Browse services on the home screen, select a service, choose a date and time, and confirm your booking.',
+                'audience' => 'user',
             ],
             [
                 'question' => 'Can I cancel my order or booking?',
                 'answer' => 'Yes. Orders in processing can be cancelled from Order History. Bookings can be cancelled or rescheduled from Booking History.',
+                'audience' => 'user',
             ],
             [
                 'question' => 'What payment methods are supported?',
                 'answer' => 'We support Razorpay online payments and Cash on Delivery for product orders.',
+                'audience' => 'user',
             ],
             [
                 'question' => 'How long does delivery take?',
                 'answer' => 'Standard product delivery typically takes 2–5 business days depending on your location.',
+                'audience' => 'user',
+            ],
+            [
+                'question' => 'How do I add or update my products?',
+                'answer' => 'Open the Products section in the vendor app, tap Add Product, and fill in details, images, and pricing.',
+                'audience' => 'vendor',
+            ],
+            [
+                'question' => 'When do I receive my vendor payouts?',
+                'answer' => 'Payouts are processed after order delivery is confirmed. Check the Wallet section for pending and completed withdrawals.',
+                'audience' => 'vendor',
+            ],
+            [
+                'question' => 'What commission does the platform charge vendors?',
+                'answer' => 'Commission rates are configured by the admin and shown in your vendor dashboard before you confirm each order.',
+                'audience' => 'vendor',
+            ],
+            [
+                'question' => 'How do I accept a new service booking?',
+                'answer' => 'Open the Bookings tab, review new requests, and tap Accept to confirm the job.',
+                'audience' => 'provider',
+            ],
+            [
+                'question' => 'When do service providers receive payouts?',
+                'answer' => 'Earnings are added to your wallet after a booking is marked completed. Request a withdrawal from the Earnings section.',
+                'audience' => 'provider',
+            ],
+            [
+                'question' => 'How do I update my skills and service area?',
+                'answer' => 'Go to Profile and update your skills, experience, address, and service area at any time.',
+                'audience' => 'provider',
             ],
         ];
 
         foreach ($faqs as $i => $faq) {
             Faq::firstOrCreate(
                 ['question' => $faq['question']],
-                ['answer' => $faq['answer'], 'status' => true, 'sort_order' => $i + 1]
+                [
+                    'answer' => $faq['answer'],
+                    'audience' => $faq['audience'],
+                    'status' => true,
+                    'sort_order' => $i + 1,
+                ]
             );
         }
 

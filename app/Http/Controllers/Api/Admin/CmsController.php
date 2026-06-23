@@ -17,9 +17,13 @@ class CmsController extends Controller
         return $this->success(CmsPage::all());
     }
 
-    public function show(string $slug): JsonResponse
+    public function show(Request $request, string $slug): JsonResponse
     {
-        $page = CmsPage::where('slug', $slug)->firstOrFail();
+        $audience = $request->query('audience', 'user');
+
+        $page = CmsPage::where('slug', $slug)
+            ->forAudience($audience)
+            ->firstOrFail();
 
         return $this->success($page);
     }
@@ -27,11 +31,14 @@ class CmsController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'slug' => ['required', 'string', 'unique:cms_pages,slug'],
+            'slug' => ['required', 'string', 'max:255'],
+            'audience' => ['nullable', 'string', 'in:user,vendor,provider'],
             'title' => ['required', 'string', 'max:255'],
             'content' => ['nullable', 'string'],
             'is_active' => ['boolean'],
         ]);
+
+        $data['audience'] = $data['audience'] ?? 'user';
 
         $page = CmsPage::create($data);
 

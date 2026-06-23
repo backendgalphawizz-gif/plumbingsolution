@@ -9,6 +9,7 @@ use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
@@ -23,10 +24,23 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
+        if ($request->filled('mobile')) {
+            $request->merge(['mobile' => trim((string) $request->input('mobile'))]);
+        }
+        if ($request->has('email')) {
+            $request->merge(['email' => $request->filled('email') ? trim((string) $request->input('email')) : null]);
+        }
+
         $data = $request->validate([
             'name' => V::nameRules(),
-            'email' => V::emailRules(required: false, uniqueTable: 'users', ignoreId: $user->id),
-            'mobile' => array_merge(V::mobileRules(), ['unique:users,mobile,'.$user->id]),
+            'email' => [
+                'nullable',
+                'string',
+                'email',
+                V::maxRule('email'),
+                Rule::unique('users', 'email')->ignore($user),
+            ],
+            'mobile' => array_merge(V::mobileRules(), [Rule::unique('users', 'mobile')->ignore($user)]),
             'address' => V::addressRules(),
             'avatar' => ['nullable', 'image', 'max:2048'],
             'profile_image' => ['nullable', 'image', 'max:2048'],

@@ -40,7 +40,7 @@
 
     <div class="form-card">
         <div class="form-section-title">Quotations</div>
-        <div class="form-section-desc">Add product line items — totals are calculated automatically.</div>
+        <div class="form-section-desc">Add product line items and send the quotation directly to the customer.</div>
 
         @forelse($bulkOrder->quotations->sortByDesc('id') as $quotation)
             @php
@@ -77,6 +77,9 @@
                 @endif
 
                 <p class="text-base font-bold text-emerald-700">Grand Total: ₹{{ number_format($quotation->amount, 2) }}</p>
+                @if($quotation->valid_until)
+                    <p class="mt-2 text-sm text-slate-600">Valid until: <span class="font-semibold">{{ $quotation->valid_until->format('M d, Y') }}</span></p>
+                @endif
                 @if($notes)<p class="mt-2 text-slate-500">{{ $notes }}</p>@endif
 
                 @if($quotation->status === 'draft')
@@ -86,6 +89,8 @@
                     </form>
                 @elseif($quotation->status === 'sent')
                     <p class="mt-2 text-xs text-slate-400">Sent {{ $quotation->sent_at?->format('M d, Y • g:i A') }}</p>
+                @elseif($quotation->status === 'expired')
+                    <p class="mt-2 text-xs text-amber-600">Expired on {{ $quotation->valid_until?->format('M d, Y') }}</p>
                 @elseif($quotation->status === 'rejected')
                     <p class="mt-2 text-xs text-red-600">Rejected: {{ $quotation->rejection_reason }}</p>
                 @elseif($quotation->status === 'approved')
@@ -93,12 +98,13 @@
                 @endif
             </div>
         @empty
-            <p class="mb-4 text-sm text-slate-400">No quotations yet. Create one below.</p>
+            <p class="mb-4 text-sm text-slate-400">No quotations yet.</p>
         @endforelse
 
+        @if($bulkOrder->canReceiveQuotation())
         <form action="{{ route('admin.bulk-orders.quotations.store', $bulkOrder) }}" method="POST" class="border-t border-slate-100 pt-5" id="quotation-form">
             @csrf
-            <h3 class="admin-label mb-3">Create Quotation</h3>
+            <h3 class="admin-label mb-3">Send Quotation to Customer</h3>
 
             <div class="overflow-x-auto">
                 <table class="admin-table" id="quotation-items-table">
@@ -132,6 +138,13 @@
             <button type="button" id="add-quotation-row" class="btn btn-secondary btn-sm mt-3">+ Add Product</button>
 
             <div class="mt-4">
+                <label class="admin-label">Valid Until <span class="text-red-500">*</span></label>
+                <input type="date" name="valid_until" value="{{ old('valid_until') }}" required min="{{ now()->format('Y-m-d') }}" class="admin-input">
+                <p class="field-hint mt-1">Customer can accept the quotation until this date. It expires automatically after.</p>
+                @error('valid_until')<p class="field-error">{{ $message }}</p>@enderror
+            </div>
+
+            <div class="mt-4">
                 <label class="admin-label">Quotation Notes (optional)</label>
                 <textarea name="notes" placeholder="Delivery timeline, terms, etc." maxlength="1000" class="admin-input" rows="2">{{ old('notes') }}</textarea>
             </div>
@@ -142,11 +155,17 @@
                 </div>
             @endif
 
-            <button type="submit" class="btn btn-primary btn-sm mt-4">Save Quotation</button>
+            <button type="submit" class="btn btn-primary btn-sm mt-4" onclick="return confirm('Send this quotation to the customer?')">Send to Customer</button>
         </form>
+        @else
+            @if($bulkOrder->quotations->isNotEmpty())
+                <p class="border-t border-slate-100 pt-5 text-sm text-slate-500">Quotation already sent. A new quotation can be created only if the customer rejects or the previous one expires.</p>
+            @endif
+        @endif
     </div>
 </div>
 
+@if($bulkOrder->canReceiveQuotation())
 @push('scripts')
 <script>
 (function () {
@@ -220,4 +239,5 @@
 })();
 </script>
 @endpush
+@endif
 @endsection

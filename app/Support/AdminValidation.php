@@ -63,9 +63,133 @@ class AdminValidation
         return $rules;
     }
 
+    /** Profile update — any valid email domain, ignore current user */
+    public static function profileEmailRules(\App\Models\User $user): array
+    {
+        return [
+            'sometimes',
+            'nullable',
+            'string',
+            'email',
+            self::maxRule('email'),
+            Rule::unique('users', 'email')->ignore($user),
+        ];
+    }
+
+    /** Profile update — ignore current user's mobile */
+    public static function profileMobileRules(\App\Models\User $user): array
+    {
+        return [
+            'sometimes',
+            'string',
+            self::mobileFormatRule(),
+            Rule::unique('users', 'mobile')->ignore($user),
+        ];
+    }
+
     public static function addressRules(): array
     {
         return ['nullable', 'string', self::maxRule('address')];
+    }
+
+    public static function requiredAddressRules(): array
+    {
+        return ['required', 'string', self::maxRule('address')];
+    }
+
+    public static function bankRules(bool $required = true): array
+    {
+        $prefix = $required ? 'required' : 'nullable';
+
+        return [
+            'account_holder_name' => [$prefix, 'string', 'max:100'],
+            'account_number' => [$prefix, 'string', 'max:30'],
+            'ifsc_code' => [$prefix, 'string', 'max:11', 'regex:/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/'],
+            'bank_name' => [$prefix, 'string', 'max:100'],
+            'account_type' => [$prefix, Rule::in(['savings', 'current', 'saving', 'Saving', 'Savings', 'Current'])],
+        ];
+    }
+
+    public static function locationRules(bool $required = true): array
+    {
+        $prefix = $required ? 'required' : 'nullable';
+
+        return [
+            'country' => [$prefix, 'string', 'max:100'],
+            'state' => [$prefix, 'string', 'max:100'],
+            'city' => [$prefix, 'string', 'max:100'],
+            'pincode' => [$prefix, 'string', 'max:10'],
+        ];
+    }
+
+    public static function imageDocRules(bool $required = true): array
+    {
+        $rules = ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'];
+
+        return $required ? array_merge(['required'], $rules) : array_merge(['nullable'], $rules);
+    }
+
+    public static function pdfOrImageDocRules(bool $required = true): array
+    {
+        $rules = ['file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:5120'];
+
+        return $required ? array_merge(['required'], $rules) : array_merge(['nullable'], $rules);
+    }
+
+    public static function skillsStringRules(bool $required = true): array
+    {
+        $rules = [
+            'string',
+            self::maxRule('skills'),
+            function (string $attribute, mixed $value, \Closure $fail): void {
+                if (! is_string($value) || trim($value) === '') {
+                    return;
+                }
+
+                $skills = array_values(array_filter(array_map('trim', explode(',', $value))));
+                if ($skills === []) {
+                    $fail('At least one skill is required.');
+                }
+            },
+        ];
+
+        return $required ? array_merge(['required'], $rules) : array_merge(['nullable'], $rules);
+    }
+
+    public static function normalizeAccountType(string $type): string
+    {
+        return match (strtolower($type)) {
+            'current' => 'current',
+            default => 'savings',
+        };
+    }
+
+    public static function faqQuestionRules(bool $required = true): array
+    {
+        $rules = ['string', self::maxRule('faq_question')];
+
+        return $required ? array_merge(['required'], $rules) : array_merge(['nullable'], $rules);
+    }
+
+    public static function faqAnswerRules(bool $required = true): array
+    {
+        $rules = ['string', self::maxRule('faq_answer')];
+
+        return $required ? array_merge(['required'], $rules) : array_merge(['nullable'], $rules);
+    }
+
+    public static function cmsTitleRules(bool $required = true): array
+    {
+        $rules = ['string', self::maxRule('cms_title')];
+
+        return $required ? array_merge(['required'], $rules) : array_merge(['nullable'], $rules);
+    }
+
+    public static function cmsContentRules(bool $required = false): array
+    {
+        $rules = ['string', self::maxRule('cms_content')];
+
+        return $required ? array_merge(['required'], $rules) : array_merge(['nullable'], $rules);
     }
 
     public static function reasonRules(bool $required = true): array
@@ -108,6 +232,12 @@ class AdminValidation
         $rules = ['string', 'min:8', self::maxRule('password'), Password::defaults()];
 
         return $required ? array_merge(['required'], $rules) : array_merge(['nullable'], $rules);
+    }
+
+    /** Login / current password — no strength rules, only length */
+    public static function loginPasswordRules(): array
+    {
+        return ['required', 'string', self::maxRule('password')];
     }
 
     public static function emailHint(): string

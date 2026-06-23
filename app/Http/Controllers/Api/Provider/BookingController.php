@@ -9,6 +9,8 @@ use App\Http\Traits\ApiResponse;
 use App\Models\BookingLog;
 use App\Support\AdminValidation as V;
 use App\Support\ProviderApiFormatter;
+use App\Services\PushNotificationService;
+use App\Services\WalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -30,7 +32,7 @@ class BookingController extends Controller
         ]);
 
         $bookings = $provider->bookings()
-            ->with(['user', 'images', 'payment'])
+            ->with(['user', 'images', 'payment', 'review.user'])
             ->when($request->search, fn ($q, $s) => $q->where(function ($q) use ($s) {
                 $q->where('booking_number', 'like', "%{$s}%")
                     ->orWhere('service_name', 'like', "%{$s}%")
@@ -100,7 +102,7 @@ class BookingController extends Controller
         return $this->updateStatus($request, $booking, BookingStatus::Started, 'Service started by provider.', BookingStatus::Accepted);
     }
 
-    public function complete(Request $request, int $booking): JsonResponse
+    public function complete(Request $request, int $booking, WalletService $wallet): JsonResponse
     {
         $provider = $this->requireProvider($request);
         if ($provider instanceof JsonResponse) {
@@ -128,8 +130,20 @@ class BookingController extends Controller
 
         $this->logStatus($bookingModel->id, BookingStatus::Completed->value, 'Service completed by provider.');
 
+        $provider->loadMissing('user');
+        if ($provider->user && $bookingModel->amount > 0) {
+            $wallet->credit($provider->user, (float) $bookingModel->amount);
+        }
+
+        app(PushNotificationService::class)->bookingStatusUpdated(
+            $bookingModel->fresh(),
+            'Service Completed',
+            "Your booking {$bookingModel->booking_number} has been completed.",
+            'booking_completed',
+        );
+
         return $this->success(
-            ProviderApiFormatter::booking($bookingModel->fresh()->load(['user', 'images', 'payment']), detailed: true),
+            ProviderApiFormatter::booking($bookingModel->fresh()->load(['user', 'images', 'payment', 'review.user']), detailed: true),
             'Service completed.'
         );
     }
@@ -165,8 +179,29 @@ class BookingController extends Controller
         $booking->update(['status' => $status]);
         $this->logStatus($booking->id, $status->value, $notes);
 
+        $action = match ($status) {
+            BookingStatus::Accepted => 'booking_accepted',
+            BookingStatus::Started => 'booking_started',
+            BookingStatus::Cancelled => 'booking_rejected',
+            default => 'booking_status_updated',
+        };
+
+        $title = match ($status) {
+            BookingStatus::Accepted => 'Booking Accepted',
+            BookingStatus::Started => 'Service Started',
+            BookingStatus::Cancelled => 'Booking Rejected',
+            default => 'Booking Updated',
+        };
+
+        app(PushNotificationService::class)->bookingStatusUpdated(
+            $booking->fresh(),
+            $title,
+            $notes,
+            $action,
+        );
+
         return $this->success(
-            ProviderApiFormatter::booking($booking->fresh()->load(['user', 'images', 'payment']), detailed: true),
+            ProviderApiFormatter::booking($booking->fresh()->load(['user', 'images', 'payment', 'review.user']), detailed: true),
             'Booking updated.'
         );
     }

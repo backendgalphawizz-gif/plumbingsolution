@@ -9,6 +9,8 @@ use App\Http\Traits\ApiResponse;
 use App\Models\OrderStatusLog;
 use App\Support\AdminValidation as V;
 use App\Support\VendorApiFormatter;
+use App\Services\PushNotificationService;
+use App\Services\WalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -164,6 +166,20 @@ class OrderController extends Controller
             'status' => $to->value,
             'notes' => $notes,
         ]);
+
+        if ($to === OrderStatus::Delivered) {
+            $vendor->loadMissing('user');
+            if ($vendor->user && $order->total_amount > 0) {
+                app(WalletService::class)->credit($vendor->user, (float) $order->total_amount);
+            }
+        }
+
+        $order->load(['user', 'vendor.user']);
+        app(PushNotificationService::class)->orderStatusUpdated(
+            $order,
+            str_replace('_', ' ', $to->value),
+            $notes,
+        );
 
         $order->load(['user', 'items.product.images', 'payment']);
 

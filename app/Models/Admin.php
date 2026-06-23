@@ -39,4 +39,9 @@ class Admin extends Authenticatable implements CanResetPasswordContract
             ->whereHas('permissions', fn ($q) => $q->where('slug', $slug))
             ->exists();
     }
+
+    public function avatarUrl(): ?string
+    {
+        return $this->avatar ? asset('storage/'.$this->avatar) : null;
+    }
 }

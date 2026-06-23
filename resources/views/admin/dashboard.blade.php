@@ -30,13 +30,14 @@
             </div>
         </a>
         <a href="{{ route('admin.orders.index') }}" class="dash-stat dash-link" title="View all orders">
-            <div>
-                <p class="dash-stat-label">Total Orders</p>
-                <p class="dash-stat-value">{{ number_format($stats['total_orders']) }}</p>
-                <div class="mt-3 h-1.5 w-full rounded-full bg-slate-100">
-                    <div class="h-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400" style="width: {{ min(100, ($stats['total_orders'] / max(1, 5000)) * 100) }}%"></div>
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="dash-stat-label">Total Orders</p>
+                    <p class="dash-stat-value">{{ number_format($stats['total_orders']) }}</p>
                 </div>
-                <p class="dash-stat-sub text-slate-400">Target: 5,000 orders</p>
+                <div class="dash-stat-icon bg-violet-50 text-violet-600">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                </div>
             </div>
         </a>
         <a href="{{ route('admin.service-bookings.index', ['status' => 'pending']) }}" class="dash-stat dash-link" title="View pending bookings">
@@ -70,27 +71,16 @@
     </div>
 
     <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <a href="{{ route('admin.reports.index') }}" class="dash-panel dash-panel-link xl:col-span-2" title="View full sales reports">
-            <div class="mb-6 flex items-center justify-between">
-                <h2 class="dash-panel-title">Revenue Overview</h2>
-                <span class="badge badge-success">Last 30 days</span>
-            </div>
-            <div class="flex h-48 items-end justify-between gap-3 px-2">
-                @forelse($monthlyRevenue as $bar)
-                    <div class="flex flex-1 flex-col items-center gap-2">
-                        <div class="w-full rounded-t-lg bg-gradient-to-t from-emerald-600 to-emerald-400" style="height: {{ max(20, ($bar->revenue / max(1, $monthlyRevenue->max('revenue'))) * 160) }}px"></div>
-                        <span class="text-xs text-slate-500">{{ $bar->month }}</span>
-                    </div>
-                @empty
-                    @for($i = 0; $i < 4; $i++)
-                        <div class="flex flex-1 flex-col items-center gap-2">
-                            <div class="w-full rounded-t-lg bg-slate-100" style="height: 40px"></div>
-                            <span class="text-xs text-slate-400">—</span>
-                        </div>
-                    @endfor
-                @endforelse
-            </div>
-        </a>
+        <div class="xl:col-span-2">
+            @include('admin.partials.revenue-trend-chart', [
+                'chartSeries' => $chartSeries,
+                'canvasId' => 'dashboardRevenueChart',
+                'title' => 'Revenue & Orders Trend',
+                'subtitle' => 'Daily performance — last 30 days',
+                'link' => route('admin.reports.index'),
+                'linkLabel' => 'Full reports',
+            ])
+        </div>
 
         <div class="dash-panel">
             <div class="mb-4 flex items-center justify-between">

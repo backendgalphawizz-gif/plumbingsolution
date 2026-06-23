@@ -4,15 +4,15 @@ namespace App\Services;
 
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
-use App\Enums\WithdrawalStatus;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\ProductReview;
 use App\Models\Vendor;
-use App\Models\VendorWithdrawal;
 
 class VendorEarningsService
 {
+    public function __construct(private WalletService $wallet) {}
+
     public function totalEarnings(Vendor $vendor): float
     {
         return (float) Order::query()
@@ -23,13 +23,11 @@ class VendorEarningsService
 
     public function walletAmount(Vendor $vendor): float
     {
-        $earnings = $this->totalEarnings($vendor);
-        $locked = (float) VendorWithdrawal::query()
-            ->where('vendor_id', $vendor->id)
-            ->whereIn('status', [WithdrawalStatus::Pending, WithdrawalStatus::Paid])
-            ->sum('amount');
+        $vendor->loadMissing('user');
 
-        return max(0, $earnings - $locked);
+        return $vendor->user
+            ? $this->wallet->balance($vendor->user)
+            : 0;
     }
 
     public function averageRating(Vendor $vendor): float

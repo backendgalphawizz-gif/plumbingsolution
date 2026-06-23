@@ -66,6 +66,10 @@
 
     @if($hint)
         <p class="field-hint">{{ $hint }}</p>
+    @elseif($limit === 'faq_question')
+        <p class="field-hint">Max {{ config('admin.limits.faq_question') }} characters</p>
+    @elseif($limit === 'faq_answer')
+        <p class="field-hint">Max {{ config('admin.limits.faq_answer') }} characters</p>
     @elseif($limit === 'name')
         <p class="field-hint">Max {{ config('admin.limits.max_name_words') }} words, {{ config('admin.limits.name') }} characters</p>
     @elseif($limit === 'email')

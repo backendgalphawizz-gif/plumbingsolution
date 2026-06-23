@@ -3,16 +3,15 @@
 namespace App\Services;
 
 use App\Enums\BookingStatus;
-use App\Enums\PaymentStatus;
-use App\Enums\WithdrawalStatus;
 use App\Models\Payment;
-use App\Models\ProviderWithdrawal;
 use App\Models\ServiceBooking;
 use App\Models\ServiceProvider;
 use App\Models\ServiceProviderReview;
 
 class ProviderEarningsService
 {
+    public function __construct(private WalletService $wallet) {}
+
     public function totalEarnings(ServiceProvider $provider): float
     {
         return (float) ServiceBooking::query()
@@ -23,13 +22,11 @@ class ProviderEarningsService
 
     public function walletAmount(ServiceProvider $provider): float
     {
-        $earnings = $this->totalEarnings($provider);
-        $locked = (float) ProviderWithdrawal::query()
-            ->where('service_provider_id', $provider->id)
-            ->whereIn('status', [WithdrawalStatus::Pending, WithdrawalStatus::Paid])
-            ->sum('amount');
+        $provider->loadMissing('user');
 
-        return max(0, $earnings - $locked);
+        return $provider->user
+            ? $this->wallet->balance($provider->user)
+            : 0;
     }
 
     public function averageRating(ServiceProvider $provider): float

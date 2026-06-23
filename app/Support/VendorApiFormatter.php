@@ -30,6 +30,7 @@ class VendorApiFormatter
                     ? asset('storage/'.$user->vendor->shop_logo)
                     : null),
             'address' => $user->address,
+            'wallet_balance' => round((float) $user->wallet_balance, 2),
         ];
 
         if ($user->relationLoaded('vendor') && $user->vendor) {

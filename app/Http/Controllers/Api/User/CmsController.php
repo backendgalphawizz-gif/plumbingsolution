@@ -14,7 +14,10 @@ class CmsController extends Controller
 
     public function show(string $slug): JsonResponse
     {
-        $page = CmsPage::where('slug', $slug)->where('is_active', true)->first();
+        $page = CmsPage::where('slug', $slug)
+            ->forAudience('user')
+            ->where('is_active', true)
+            ->first();
 
         if (! $page) {
             return $this->error('Page not found.', 404);
@@ -30,6 +33,7 @@ class CmsController extends Controller
     public function faqs(): JsonResponse
     {
         $faqs = Faq::where('status', true)
+            ->forAudience('user')
             ->orderBy('sort_order')
             ->get(['id', 'question', 'answer']);
 

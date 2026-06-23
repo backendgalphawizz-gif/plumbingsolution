@@ -38,7 +38,7 @@ trait ResolvesProvider
     protected function providerBooking(ServiceProvider $provider, int $bookingId): ?ServiceBooking
     {
         return $provider->bookings()
-            ->with(['user', 'images', 'payment'])
+            ->with(['user', 'images', 'payment', 'review.user'])
             ->whereKey($bookingId)
             ->first();
     }

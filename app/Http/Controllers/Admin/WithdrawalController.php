@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ProviderWithdrawal;
 use App\Models\UserWithdrawal;
 use App\Models\VendorWithdrawal;
+use App\Services\WalletService;
 use App\Support\AdminValidation as V;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -67,7 +68,7 @@ class WithdrawalController extends Controller
             ->with('success', 'Withdrawal marked as paid.');
     }
 
-    public function reject(Request $request, string $type, int $withdrawal): RedirectResponse
+    public function reject(Request $request, string $type, int $withdrawal, WalletService $wallet): RedirectResponse
     {
         $type = $this->resolveType($request->merge(['type' => $type]));
         $model = $this->findWithdrawal($type, $withdrawal);
@@ -83,6 +84,16 @@ class WithdrawalController extends Controller
             'processed_at' => now(),
             'notes' => $data['reason'],
         ]);
+
+        $user = match ($type) {
+            'provider' => $model->serviceProvider?->user,
+            'user' => $model->user,
+            default => $model->vendor?->user,
+        };
+
+        if ($user) {
+            $wallet->refund($user, (float) $model->amount);
+        }
 
         return redirect()
             ->route('admin.withdrawals.show', ['type' => $type, 'withdrawal' => $model->id])

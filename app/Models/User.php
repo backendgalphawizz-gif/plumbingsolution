@@ -15,7 +15,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
-        'name', 'email', 'mobile', 'role', 'password', 'avatar', 'address',
+        'name', 'email', 'mobile', 'role', 'password', 'avatar', 'fcm_token', 'address', 'wallet_balance',
         'is_blocked', 'blocked_at', 'block_reason',
     ];
 
@@ -29,6 +29,7 @@ class User extends Authenticatable
             'role' => UserRole::class,
             'is_blocked' => 'boolean',
             'blocked_at' => 'datetime',
+            'wallet_balance' => 'decimal:2',
         ];
     }
 

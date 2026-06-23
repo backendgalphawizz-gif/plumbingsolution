@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\Concerns\ExportsAdminTable;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderStatusLog;
+use App\Services\PushNotificationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -57,7 +58,13 @@ class OrderController extends Controller
 
     public function show(Order $order): View
     {
-        $order->load(['user', 'vendor', 'items', 'statusLogs']);
+        $order->load([
+            'user' => fn ($q) => $q->withCount(['orders', 'serviceBookings']),
+            'vendor',
+            'items.product',
+            'payment',
+            'statusLogs' => fn ($q) => $q->latest()->with('changedBy'),
+        ]);
 
         return view('admin.orders.show', compact('order'));
     }
@@ -78,6 +85,13 @@ class OrderController extends Controller
             'changed_by' => auth('admin')->id(),
         ]);
 
+        $order->load(['user', 'vendor.user']);
+        app(PushNotificationService::class)->orderStatusUpdated(
+            $order,
+            str_replace('_', ' ', $request->status),
+            $request->notes,
+        );
+
         return back()->with('success', 'Order status updated.');
     }
 
@@ -90,6 +104,16 @@ class OrderController extends Controller
             'cancelled_at' => now(),
             'cancellation_reason' => $request->reason,
         ]);
+
+        OrderStatusLog::create([
+            'order_id' => $order->id,
+            'status' => OrderStatus::Cancelled->value,
+            'notes' => $request->reason,
+            'changed_by' => auth('admin')->id(),
+        ]);
+
+        $order->load(['user', 'vendor.user']);
+        app(PushNotificationService::class)->orderStatusUpdated($order, 'cancelled', $request->reason);
 
         return back()->with('success', 'Order cancelled.');
     }

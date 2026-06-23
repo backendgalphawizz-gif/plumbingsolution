@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\BuildsChartSeries;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
@@ -15,6 +16,8 @@ use Illuminate\View\View;
 
 class ReportController extends Controller
 {
+    use BuildsChartSeries;
+
     public function index(Request $request): View
     {
         if ($request->get('filter') === 'custom') {
@@ -99,28 +102,6 @@ class ReportController extends Controller
         };
 
         return [...$range, $filter];
-    }
-
-    private function buildDateSeries(Carbon $start, Carbon $end, Collection $sales): array
-    {
-        $map = $sales->keyBy(fn ($row) => Carbon::parse($row->date)->format('Y-m-d'));
-        $labels = [];
-        $revenue = [];
-        $orders = [];
-
-        $current = $start->copy()->startOfDay();
-        $endDay = $end->copy()->startOfDay();
-
-        while ($current <= $endDay) {
-            $key = $current->format('Y-m-d');
-            $row = $map->get($key);
-            $labels[] = $current->format('M d');
-            $revenue[] = round((float) ($row->total ?? 0), 2);
-            $orders[] = (int) ($row->count ?? 0);
-            $current->addDay();
-        }
-
-        return compact('labels', 'revenue', 'orders');
     }
 
     private function buildStatusChart(Collection $rows, array $colorMap = []): array

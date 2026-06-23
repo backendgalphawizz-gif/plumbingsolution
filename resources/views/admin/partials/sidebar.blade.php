@@ -18,19 +18,22 @@
     ];
 @endphp
 
-<aside class="fixed inset-y-0 left-0 z-30 flex w-[260px] flex-col bg-[#0b1220] text-white shadow-xl">
-    <div class="border-b border-white/5 px-5 py-6">
-        <div class="flex items-center gap-3">
-            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-lg font-extrabold text-white shadow-lg shadow-emerald-900/40">P</div>
-            <div>
-                <div class="text-[15px] font-bold tracking-tight text-white">PlumbManager</div>
-                <div class="text-[10px] font-semibold uppercase tracking-[0.15em] text-emerald-400/80">Admin Console</div>
-            </div>
-        </div>
+<aside id="admin-sidebar" class="admin-sidebar fixed inset-y-0 left-0 z-30 flex w-[min(280px,88vw)] max-w-[280px] -translate-x-full flex-col transition-transform duration-300 ease-out lg:w-[260px] lg:translate-x-0">
+    <div class="sidebar-brand-wrap flex items-center justify-between gap-3 px-4 py-4 sm:px-5 sm:py-5">
+        <a href="{{ route('admin.dashboard') }}" class="sidebar-brand block min-w-0 flex-1">
+            <img
+                src="{{ asset('images/plumbing-solutions-logo.png') }}"
+                alt="Plumbing Solutions"
+                class="sidebar-brand-logo"
+            >
+        </a>
+        <button type="button" class="sidebar-close lg:hidden" data-sidebar-close aria-label="Close menu">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
     </div>
 
     <nav class="flex-1 overflow-y-auto px-3 py-4">
-        <p class="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">Main Menu</p>
+        <p class="sidebar-section-label">Main Menu</p>
         @foreach($navItems as $item)
             @php $active = request()->routeIs($item['pattern']); @endphp
             <a href="{{ route($item['route']) }}" class="sidebar-link {{ $active ? 'active' : '' }}">
@@ -42,7 +45,7 @@
         @endforeach
     </nav>
 
-    <div class="border-t border-white/5 p-4">
+    <div class="sidebar-footer p-4">
         <a href="{{ route('admin.profile.edit') }}" class="sidebar-link mb-1 {{ request()->routeIs('admin.profile.*') ? 'active' : '' }}">
             <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
             Profile

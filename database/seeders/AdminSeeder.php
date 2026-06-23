@@ -68,12 +68,32 @@ class AdminSeeder extends Seeder
             ['slug' => 'contact-us', 'title' => 'Contact Us'],
         ];
 
+        $legalAudiences = ['user', 'vendor', 'provider'];
+
         foreach ($cmsPages as $page) {
-            CmsPage::firstOrCreate(['slug' => $page['slug']], [
-                'title' => $page['title'],
-                'content' => '<p>Content for '.$page['title'].'</p>',
-                'is_active' => true,
-            ]);
+            if (in_array($page['slug'], ['privacy-policy', 'terms-and-conditions'], true)) {
+                foreach ($legalAudiences as $audience) {
+                    CmsPage::firstOrCreate(
+                        ['slug' => $page['slug'], 'audience' => $audience],
+                        [
+                            'title' => $page['title'],
+                            'content' => '<p>Content for '.$page['title'].' ('.ucfirst($audience).')</p>',
+                            'is_active' => true,
+                        ]
+                    );
+                }
+
+                continue;
+            }
+
+            CmsPage::firstOrCreate(
+                ['slug' => $page['slug'], 'audience' => 'user'],
+                [
+                    'title' => $page['title'],
+                    'content' => '<p>Content for '.$page['title'].'</p>',
+                    'is_active' => true,
+                ]
+            );
         }
 
         $defaultSettings = [
@@ -84,7 +104,6 @@ class AdminSeeder extends Seeder
             ['group' => 'payment', 'key' => 'cod_enabled', 'value' => '1', 'type' => 'boolean'],
             ['group' => 'commission', 'key' => 'vendor_commission', 'value' => '10', 'type' => 'decimal'],
             ['group' => 'commission', 'key' => 'provider_commission', 'value' => '15', 'type' => 'decimal'],
-            ['group' => 'commission', 'key' => 'platform_charges', 'value' => '2', 'type' => 'decimal'],
             ['group' => 'tax', 'key' => 'gst_rate', 'value' => '18', 'type' => 'decimal'],
             ['group' => 'notification', 'key' => 'push_enabled', 'value' => '1', 'type' => 'boolean'],
         ];

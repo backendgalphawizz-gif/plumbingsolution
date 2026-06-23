@@ -50,7 +50,6 @@ class SettingController extends Controller
         return $this->success([
             'vendor_commission' => Setting::getValue('commission', 'vendor_commission', '10'),
             'provider_commission' => Setting::getValue('commission', 'provider_commission', '15'),
-            'platform_charges' => Setting::getValue('commission', 'platform_charges', '2'),
         ]);
     }
 }

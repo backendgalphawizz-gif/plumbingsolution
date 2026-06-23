@@ -132,6 +132,26 @@ class ProviderServiceManagement
         });
     }
 
+    public function setAvailability(ServiceProvider $provider, Service $service, bool $isAvailable): Service
+    {
+        $provider->services()->updateExistingPivot($service->id, [
+            'is_available' => $isAvailable,
+        ]);
+
+        if ($service->service_provider_id === $provider->id) {
+            $service->update(['status' => $isAvailable]);
+        }
+
+        return $this->ownedBy($provider, $service->id);
+    }
+
+    public function availabilityRules(): array
+    {
+        return [
+            'status' => ['required', 'integer', 'in:0,1'],
+        ];
+    }
+
     public function delete(ServiceProvider $provider, Service $service): void
     {
         if ($service->service_provider_id === $provider->id) {

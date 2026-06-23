@@ -31,7 +31,7 @@ class AuthController extends Controller
     {
         $credentials = $request->validate([
             'email' => V::emailRules(),
-            'password' => ['required', 'string', V::maxRule('password')],
+            'password' => V::loginPasswordRules(),
         ]);
 
         $admin = Admin::where('email', $credentials['email'])->first();

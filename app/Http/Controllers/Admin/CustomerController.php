@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Admin\Concerns\ExportsAdminTable;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class CustomerController extends Controller
@@ -21,9 +24,9 @@ class CustomerController extends Controller
         $customers = $this->filteredCustomers($request)->paginate(15)->withQueryString();
 
         $stats = [
-            'total' => User::count(),
-            'active' => User::where('is_blocked', false)->count(),
-            'blocked' => User::where('is_blocked', true)->count(),
+            'total' => User::where('role', UserRole::Customer)->count(),
+            'active' => User::where('role', UserRole::Customer)->where('is_blocked', false)->count(),
+            'blocked' => User::where('role', UserRole::Customer)->where('is_blocked', true)->count(),
         ];
 
         return view('admin.customers.index', compact('customers', 'stats'));
@@ -55,7 +58,8 @@ class CustomerController extends Controller
         $request->validate(['search' => V::searchRules()]);
 
         return $this->applyDateRange(
-            User::withCount(['orders', 'serviceBookings'])
+            User::where('role', UserRole::Customer)
+                ->withCount(['orders', 'serviceBookings'])
                 ->when($request->search, fn ($q, $s) => $q->where(function ($q) use ($s) {
                     $q->where('name', 'like', "%{$s}%")
                         ->orWhere('email', 'like', "%{$s}%")
@@ -76,38 +80,57 @@ class CustomerController extends Controller
     {
         $data = $request->validate([
             'name' => V::nameRules(),
-            'email' => V::emailRules(uniqueTable: 'users'),
-            'mobile' => V::mobileRules(),
+            'mobile' => array_merge(V::mobileRules(required: true), ['unique:users,mobile']),
+            'email' => V::emailRules(required: false, uniqueTable: 'users'),
             'password' => V::passwordRules(),
             'address' => V::addressRules(),
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
-        User::create([
-            ...$data,
-            'password' => Hash::make($data['password']),
-        ]);
+        $payload = collect($data)->except(['avatar', 'password'])->filter(fn ($v) => $v !== null && $v !== '')->toArray();
+        $payload['password'] = Hash::make($data['password']);
+        $payload['role'] = UserRole::Customer;
+
+        if ($request->hasFile('avatar')) {
+            $payload['avatar'] = $request->file('avatar')->store('avatars', 'public');
+        }
+
+        User::create($payload);
 
         return redirect()->route('admin.customers.index')->with('success', 'Customer created successfully.');
     }
 
     public function edit(User $customer): View
     {
+        abort_unless($customer->role === UserRole::Customer, 404);
+
         return view('admin.customers.form', ['customer' => $customer]);
     }
 
     public function update(Request $request, User $customer): RedirectResponse
     {
+        abort_unless($customer->role === UserRole::Customer, 404);
+
         $data = $request->validate([
             'name' => V::nameRules(),
-            'email' => V::emailRules(uniqueTable: 'users', ignoreId: $customer->id),
-            'mobile' => V::mobileRules(),
+            'mobile' => array_merge(V::mobileRules(required: true), [Rule::unique('users', 'mobile')->ignore($customer)]),
+            'email' => V::emailRules(required: false, uniqueTable: 'users', ignoreId: $customer->id),
             'password' => V::passwordRules(required: false),
             'address' => V::addressRules(),
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
-        $update = collect($data)->except('password')->toArray();
+        $update = collect($data)->except(['password', 'avatar'])->toArray();
+
         if (! empty($data['password'])) {
             $update['password'] = Hash::make($data['password']);
+        }
+
+        if ($request->hasFile('avatar')) {
+            if ($customer->avatar) {
+                Storage::disk('public')->delete($customer->avatar);
+            }
+            $update['avatar'] = $request->file('avatar')->store('avatars', 'public');
         }
 
         $customer->update($update);
@@ -117,8 +140,10 @@ class CustomerController extends Controller
 
     public function show(User $customer): View
     {
-        $customer->loadCount(['orders', 'serviceBookings']);
-        $orders = $customer->orders()->with('items')->latest()->limit(10)->get();
+        abort_unless($customer->role === UserRole::Customer, 404);
+
+        $customer->loadCount(['orders', 'serviceBookings', 'bulkOrders']);
+        $orders = $customer->orders()->latest()->limit(10)->get();
         $bookings = $customer->serviceBookings()->with('serviceProvider')->latest()->limit(10)->get();
 
         return view('admin.customers.show', compact('customer', 'orders', 'bookings'));
@@ -126,6 +151,8 @@ class CustomerController extends Controller
 
     public function block(Request $request, User $customer): RedirectResponse
     {
+        abort_unless($customer->role === UserRole::Customer, 404);
+
         $request->validate(['reason' => V::reasonRules()]);
 
         $customer->update([
@@ -139,6 +166,8 @@ class CustomerController extends Controller
 
     public function unblock(User $customer): RedirectResponse
     {
+        abort_unless($customer->role === UserRole::Customer, 404);
+
         $customer->update(['is_blocked' => false, 'blocked_at' => null, 'block_reason' => null]);
 
         return back()->with('success', 'Customer unblocked.');

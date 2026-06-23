@@ -5,9 +5,31 @@
 
 @section('content')
 <div class="grid gap-6 lg:grid-cols-2">
-    <form action="{{ route('admin.profile.update') }}" method="POST" class="form-card">@csrf @method('PUT')
+    <form action="{{ route('admin.profile.update') }}" method="POST" enctype="multipart/form-data" class="form-card">@csrf @method('PUT')
         <div class="form-section-title">Profile Information</div>
-        <div class="form-section-desc">Your display name and contact details.</div>
+        <div class="form-section-desc">Your display name, photo and contact details.</div>
+
+        <div class="profile-avatar-field">
+            <label class="admin-label">Profile Photo</label>
+            <div class="profile-avatar-row">
+                <div class="profile-avatar-preview" id="avatar-preview">
+                    @if($admin->avatarUrl())
+                        <img src="{{ $admin->avatarUrl() }}" alt="{{ $admin->name }}">
+                    @else
+                        <span>{{ strtoupper(substr($admin->name, 0, 1)) }}</span>
+                    @endif
+                </div>
+                <div class="profile-avatar-actions">
+                    <input type="file" name="avatar" id="avatar" accept="image/jpeg,image/jpg,image/png,image/webp" class="profile-avatar-input">
+                    <label for="avatar" class="btn btn-secondary btn-sm">Choose Image</label>
+                    <p class="field-hint">JPG, PNG or WebP. Max 2 MB. Shown next to your name in the header.</p>
+                    @error('avatar')
+                        <p class="field-error">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+        </div>
+
         <div class="space-y-4">
             @include('admin.partials.form-field', ['label' => 'Name', 'name' => 'name', 'limit' => 'name', 'value' => old('name', $admin->name), 'required' => true])
             <div>
@@ -32,3 +54,19 @@
     </form>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.getElementById('avatar')?.addEventListener('change', (event) => {
+    const file = event.target.files?.[0];
+    const preview = document.getElementById('avatar-preview');
+    if (!file || !preview) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        preview.innerHTML = `<img src="${reader.result}" alt="Preview">`;
+    };
+    reader.readAsDataURL(file);
+});
+</script>
+@endpush

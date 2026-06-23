@@ -10,6 +10,7 @@ use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductReview;
+use App\Models\Quotation;
 use App\Models\Service;
 use App\Models\ServiceBooking;
 use App\Models\ServiceProvider;
@@ -31,6 +32,7 @@ class UserApiFormatter
             'avatar' => $user->avatar ? asset('storage/'.$user->avatar) : null,
             'profile_image' => $user->avatar ? asset('storage/'.$user->avatar) : null,
             'address' => $user->address,
+            'wallet_balance' => round((float) $user->wallet_balance, 2),
         ];
 
         if ($user->relationLoaded('serviceProvider') && $user->serviceProvider) {
@@ -369,22 +371,38 @@ class UserApiFormatter
         ];
     }
 
-    public static function bulkOrderStatusLabel(string $status): string
+    public static function bulkOrderStatusLabel(BulkOrder $bulkOrder, ?Quotation $activeQuotation = null): string
     {
-        return match ($status) {
+        if ($activeQuotation && ($activeQuotation->status === 'expired' || $activeQuotation->isExpired())) {
+            return 'expired';
+        }
+
+        return match ($bulkOrder->status) {
             'requirement_submitted', 'admin_review', 'quotation_generated' => 'submitted',
             'quotation_sent' => 'quotation',
             'customer_approved', 'order_created' => 'approved',
             'customer_rejected' => 'rejected',
-            default => $status,
+            default => $bulkOrder->status,
         };
     }
 
     public static function bulkOrder(BulkOrder $bulkOrder, bool $detailed = false): array
     {
+        $formatter = app(QuotationService::class);
+        $formatter->expireStaleForBulkOrder($bulkOrder);
+
+        if ($bulkOrder->relationLoaded('quotations')) {
+            $bulkOrder->load('quotations');
+        }
+
         $activeQuotation = $bulkOrder->relationLoaded('quotations')
             ? $bulkOrder->quotations->sortByDesc('id')->first()
             : null;
+
+        $canRespond = $activeQuotation
+            && $bulkOrder->status === 'quotation_sent'
+            && $activeQuotation->status === 'sent'
+            && ! $activeQuotation->isExpired();
 
         $data = [
             'type' => 'bulk_order',
@@ -393,12 +411,10 @@ class UserApiFormatter
             'full_name' => $bulkOrder->full_name,
             'mobile' => $bulkOrder->mobile,
             'note' => $bulkOrder->requirement_description,
-            'status' => self::bulkOrderStatusLabel($bulkOrder->status),
+            'status' => self::bulkOrderStatusLabel($bulkOrder, $activeQuotation),
             'status_raw' => $bulkOrder->status,
-            'can_accept_quotation' => $bulkOrder->status === 'quotation_sent'
-                && $activeQuotation?->status === 'sent',
-            'can_reject_quotation' => $bulkOrder->status === 'quotation_sent'
-                && $activeQuotation?->status === 'sent',
+            'can_accept_quotation' => $canRespond,
+            'can_reject_quotation' => $canRespond,
             'created_at' => $bulkOrder->created_at->format('M d, Y'),
             'created_at_full' => $bulkOrder->created_at->format('M d, Y • g:i A'),
         ];
@@ -415,7 +431,6 @@ class UserApiFormatter
         }
 
         if ($detailed || $bulkOrder->relationLoaded('quotations')) {
-            $formatter = app(QuotationService::class);
             $data['quotations'] = $bulkOrder->relationLoaded('quotations')
                 ? $bulkOrder->quotations->map(fn ($q) => $formatter->format($q))->values()->all()
                 : [];

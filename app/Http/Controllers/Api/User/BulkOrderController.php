@@ -11,6 +11,7 @@ use App\Models\BulkOrderFile;
 use App\Models\Payment;
 use App\Models\Quotation;
 use App\Models\Transaction;
+use App\Services\QuotationService;
 use App\Support\AdminValidation as V;
 use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
@@ -21,6 +22,8 @@ use Illuminate\Validation\Rule;
 class BulkOrderController extends Controller
 {
     use ApiResponse;
+
+    public function __construct(private QuotationService $quotations) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -113,10 +116,11 @@ class BulkOrderController extends Controller
 
         abort_if($bulkOrder->user_id !== $request->user()->id, 403);
 
-        if ($bulkOrder->status !== 'quotation_sent' || $quotation->status !== 'sent') {
-            return $this->error('This quotation is not available for acceptance.', 422);
+        if (! $this->quotations->canRespond($quotation, $bulkOrder)) {
+            return $this->error('This quotation has expired or is no longer available.', 422);
         }
 
+        $quotation->refresh();
         $quotation->update([
             'status' => 'approved',
             'responded_at' => now(),
@@ -176,9 +180,11 @@ class BulkOrderController extends Controller
 
         abort_if($bulkOrder->user_id !== $request->user()->id, 403);
 
-        if ($bulkOrder->status !== 'quotation_sent' || $quotation->status !== 'sent') {
-            return $this->error('This quotation is not available for rejection.', 422);
+        if (! $this->quotations->canRespond($quotation, $bulkOrder)) {
+            return $this->error('This quotation has expired or is no longer available.', 422);
         }
+
+        $quotation->refresh();
 
         $quotation->update([
             'status' => 'rejected',

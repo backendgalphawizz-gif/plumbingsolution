@@ -43,24 +43,27 @@ class BulkOrderController extends Controller
 
     public function createQuotation(Request $request, BulkOrder $bulkOrder, QuotationService $quotations): JsonResponse
     {
+        if (! $bulkOrder->canReceiveQuotation()) {
+            return $this->error('A quotation has already been sent for this bulk order.', 422);
+        }
+
         $data = $request->validate($quotations->storeRules());
 
-        $quotation = $quotations->create($bulkOrder, $data, $request->user()->id);
+        $quotation = $quotations->create($bulkOrder, $data, $request->user()->id, sendImmediately: true);
 
-        return $this->success($quotations->format($quotation), 'Quotation created.', 201);
+        return $this->success($quotations->format($quotation), 'Quotation sent to customer.', 201);
     }
 
-    public function sendQuotation(BulkOrder $bulkOrder, Quotation $quotation): JsonResponse
+    public function sendQuotation(BulkOrder $bulkOrder, Quotation $quotation, QuotationService $quotations): JsonResponse
     {
         abort_if($quotation->bulk_order_id !== $bulkOrder->id, 404);
 
-        if ($quotation->status !== 'draft') {
-            return $this->error('Only draft quotations can be sent.', 422);
+        try {
+            $quotation = $quotations->send($quotation, $bulkOrder);
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), 422);
         }
 
-        $quotation->update(['status' => 'sent', 'sent_at' => now()]);
-        $bulkOrder->update(['status' => 'quotation_sent']);
-
-        return $this->success(app(QuotationService::class)->format($quotation->fresh()), 'Quotation sent to customer.');
+        return $this->success($quotations->format($quotation), 'Quotation sent to customer.');
     }
 }

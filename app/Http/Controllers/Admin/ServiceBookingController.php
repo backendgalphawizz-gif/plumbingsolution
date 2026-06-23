@@ -7,7 +7,10 @@ use App\Http\Controllers\Admin\Concerns\ExportsAdminTable;
 use App\Http\Controllers\Controller;
 use App\Models\BookingLog;
 use App\Models\ServiceBooking;
+use App\Services\PushNotificationService;
+use App\Services\WalletService;
 use App\Models\ServiceProvider;
+use App\Support\AdminValidation as V;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -58,7 +61,15 @@ class ServiceBookingController extends Controller
 
     public function show(ServiceBooking $serviceBooking): View
     {
-        $serviceBooking->load(['user', 'serviceProvider', 'logs', 'images']);
+        $serviceBooking->load([
+            'user' => fn ($q) => $q->withCount(['orders', 'serviceBookings']),
+            'serviceProvider',
+            'service',
+            'payment',
+            'review',
+            'images',
+            'logs' => fn ($q) => $q->latest()->with('changedBy'),
+        ]);
         $providers = ServiceProvider::where('status', 'approved')->orderBy('name')->get();
 
         return view('admin.service-bookings.show', compact('serviceBooking', 'providers'));
@@ -75,6 +86,13 @@ class ServiceBookingController extends Controller
 
         $this->log($serviceBooking, BookingStatus::Assigned->value, 'Provider assigned.');
 
+        app(PushNotificationService::class)->bookingStatusUpdated(
+            $serviceBooking->fresh()->load(['user', 'serviceProvider.user']),
+            'Provider Assigned',
+            'A service provider has been assigned to your booking.',
+            'booking_assigned',
+        );
+
         return back()->with('success', 'Provider assigned.');
     }
 
@@ -82,8 +100,10 @@ class ServiceBookingController extends Controller
     {
         $request->validate([
             'status' => ['required', 'in:'.implode(',', array_column(BookingStatus::cases(), 'value'))],
-            'notes' => ['nullable', 'string'],
+            'notes' => V::notesRules(),
         ]);
+
+        $wasCompleted = $serviceBooking->status === BookingStatus::Completed;
 
         $updates = ['status' => $request->status];
         if ($request->status === BookingStatus::Completed->value) {
@@ -92,6 +112,23 @@ class ServiceBookingController extends Controller
 
         $serviceBooking->update($updates);
         $this->log($serviceBooking, $request->status, $request->notes);
+
+        if (! $wasCompleted && $request->status === BookingStatus::Completed->value) {
+            $serviceBooking->load('serviceProvider.user');
+            if ($serviceBooking->serviceProvider?->user && $serviceBooking->amount > 0) {
+                app(WalletService::class)->credit(
+                    $serviceBooking->serviceProvider->user,
+                    (float) $serviceBooking->amount
+                );
+            }
+        }
+
+        app(PushNotificationService::class)->bookingStatusUpdated(
+            $serviceBooking->fresh()->load(['user', 'serviceProvider.user']),
+            'Booking Status Updated',
+            'Your booking status is now '.str_replace('_', ' ', $request->status).'.',
+            'booking_status_updated',
+        );
 
         return back()->with('success', 'Booking status updated.');
     }
