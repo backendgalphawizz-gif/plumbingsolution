@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\OrderReturnStatus;
 use App\Enums\OrderStatus;
+use App\Enums\WalletTransactionCategory;
 use App\Models\Admin;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -14,7 +15,10 @@ use Illuminate\Support\Str;
 
 class OrderReturnService
 {
-    public function __construct(private PushNotificationService $notifications) {}
+    public function __construct(
+        private PushNotificationService $notifications,
+        private WalletService $wallet,
+    ) {}
 
     public function createRequest(Order $order, OrderItem $item, int $quantity, string $reason): OrderReturn
     {
@@ -54,6 +58,24 @@ class OrderReturnService
                 'reviewed_at' => now(),
             ]);
 
+            $return->load(['user', 'orderItem', 'order']);
+            $walletTransaction = null;
+            if ($return->user && (float) $return->refund_amount > 0) {
+                $walletTransaction = $this->wallet->credit(
+                    $return->user,
+                    (float) $return->refund_amount,
+                    WalletTransactionCategory::ReturnRefund,
+                    "Refund for return {$return->return_number}",
+                    $return,
+                    [
+                        'return_number' => $return->return_number,
+                        'order_id' => $return->order_id,
+                        'order_number' => $return->order?->order_number,
+                        'product_name' => $return->orderItem?->product_name,
+                    ],
+                );
+            }
+
             $item = $return->orderItem()->with('product')->first();
             if ($item?->product) {
                 $item->product->increment('stock', $return->quantity);
@@ -72,7 +94,7 @@ class OrderReturnService
             }
 
             $return->load(['orderItem', 'order.user', 'order.vendor.user', 'user']);
-            $this->notifications->orderReturnReviewed($return, approved: true);
+            $this->notifications->orderReturnReviewed($return, approved: true, walletTransaction: $walletTransaction);
 
             return $return;
         });

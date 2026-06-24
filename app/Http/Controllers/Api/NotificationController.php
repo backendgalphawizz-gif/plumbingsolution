@@ -65,6 +65,8 @@ class NotificationController extends Controller
             'data' => $data,
             'order_id' => $data['order_id'] ?? null,
             'booking_id' => $data['booking_id'] ?? null,
+            'return_id' => $data['return_id'] ?? null,
+            'wallet_transaction_id' => $data['wallet_transaction_id'] ?? null,
             'type_id' => $data['type_id'] ?? null,
             'action' => $data['type'] ?? null,
         ];

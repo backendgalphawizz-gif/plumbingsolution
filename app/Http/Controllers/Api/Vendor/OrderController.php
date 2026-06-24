@@ -26,7 +26,7 @@ class OrderController extends Controller
         }
 
         $request->validate([
-            'status' => ['nullable', 'in:all,new,accepted,out_for_delivery,delivered,cancelled'],
+            'status' => ['nullable', 'in:all,new,accepted,out_for_delivery,delivered,cancelled,returned'],
             'search' => V::searchRules(),
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
@@ -44,6 +44,7 @@ class OrderController extends Controller
                     'out_for_delivery' => $q->where('status', OrderStatus::Shipped),
                     'delivered' => $q->where('status', OrderStatus::Delivered),
                     'cancelled' => $q->where('status', OrderStatus::Cancelled),
+                    'returned' => $q->whereIn('status', [OrderStatus::Returned, OrderStatus::Refunded]),
                     default => null,
                 };
             })

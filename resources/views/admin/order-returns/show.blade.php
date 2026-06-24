@@ -38,6 +38,7 @@
                 @csrf
                 <label class="admin-label">Approval Notes (optional)</label>
                 <textarea name="notes" class="admin-input mb-3" rows="2" maxlength="{{ config('admin.limits.notes') }}" placeholder="Refund reference, pickup details, etc."></textarea>
+                <p class="mb-3 text-xs text-slate-500">₹{{ number_format($orderReturn->refund_amount, 2) }} will be credited to the customer's wallet.</p>
                 <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Approve this return request?')">Approve Return</button>
             </form>
             <form action="{{ route('admin.order-returns.reject', $orderReturn) }}" method="POST">

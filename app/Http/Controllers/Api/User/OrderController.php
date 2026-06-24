@@ -24,7 +24,7 @@ class OrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'status' => ['nullable', Rule::in(['all', 'processing', 'out_for_delivery', 'delivered', 'cancelled', 'quotation'])],
+            'status' => ['nullable', Rule::in(['all', 'processing', 'out_for_delivery', 'delivered', 'cancelled', 'returned', 'quotation'])],
         ]);
 
         $filter = $request->get('status', 'all');
@@ -105,6 +105,7 @@ class OrderController extends Controller
                     'out_for_delivery' => [OrderStatus::Shipped],
                     'delivered' => [OrderStatus::Delivered],
                     'cancelled' => [OrderStatus::Cancelled],
+                    'returned' => [OrderStatus::Returned, OrderStatus::Refunded],
                 ];
                 if (isset($map[$filter])) {
                     $q->whereIn('status', array_map(fn ($s) => $s->value, $map[$filter]));

@@ -173,6 +173,7 @@ class VendorApiFormatter
             OrderStatus::Shipped => 'out_for_delivery',
             OrderStatus::Delivered => 'delivered',
             OrderStatus::Cancelled => 'cancelled',
+            OrderStatus::Returned, OrderStatus::Refunded => 'returned',
             default => $status->value,
         };
     }
@@ -186,6 +187,8 @@ class VendorApiFormatter
             OrderStatus::Shipped => 'OUT FOR DELIVERY',
             OrderStatus::Delivered => 'DELIVERED',
             OrderStatus::Cancelled => 'CANCELLED',
+            OrderStatus::Returned => 'RETURNED',
+            OrderStatus::Refunded => 'REFUNDED',
             default => strtoupper($status->value),
         };
     }

@@ -5,6 +5,8 @@ namespace App\Support;
 use App\Enums\BookingStatus;
 use App\Enums\OrderStatus;
 use App\Models\OrderReturn;
+use App\Models\WalletTransaction;
+use App\Enums\WalletTransactionCategory;
 use App\Models\Banner;
 use App\Models\BulkOrder;
 use App\Models\CartItem;
@@ -57,6 +59,8 @@ class UserApiFormatter
             'skills' => $provider->skills ?? [],
             'experience' => $provider->experience_years,
             'service_area' => $provider->service_area,
+            'latitude' => $provider->latitude,
+            'longitude' => $provider->longitude,
             'bank' => [
                 'account_number' => $provider->account_number,
                 'account_holder_name' => $provider->account_holder_name,
@@ -175,6 +179,8 @@ class UserApiFormatter
             'skills' => $provider->skills ?? [],
             'experience_years' => $provider->experience_years,
             'service_area' => $provider->service_area,
+            'latitude' => $provider->latitude,
+            'longitude' => $provider->longitude,
             'image' => $provider->avatar
                 ? asset('storage/'.$provider->avatar)
                 : ($primaryImage ? asset('storage/'.$primaryImage->image_path) : null),
@@ -183,6 +189,10 @@ class UserApiFormatter
             'reviews_count' => (int) ($provider->reviews_count ?? 0),
             'services_count' => $provider->relationLoaded('services') ? $provider->services->count() : null,
         ];
+
+        if (isset($provider->distance_km)) {
+            $data['distance_km'] = round((float) $provider->distance_km, 2);
+        }
 
         if ($detailed) {
             $data['services'] = $provider->relationLoaded('services')
@@ -549,6 +559,27 @@ class UserApiFormatter
         }
 
         return $images->values()->all();
+    }
+
+    public static function walletTransaction(WalletTransaction $transaction): array
+    {
+        $isCredit = $transaction->direction === 'credit';
+        $amount = (float) $transaction->amount;
+
+        return [
+            'id' => $transaction->id,
+            'transaction_id' => $transaction->transaction_id,
+            'direction' => $transaction->direction,
+            'category' => $transaction->category->value,
+            'category_label' => $transaction->category->label(),
+            'amount' => $amount,
+            'formatted_amount' => ($isCredit ? '+' : '-').'₹'.number_format($amount, 2),
+            'balance_after' => (float) $transaction->balance_after,
+            'description' => $transaction->description,
+            'metadata' => $transaction->metadata ?? [],
+            'created_at' => $transaction->created_at->format('M d, Y • g:i A'),
+            'created_at_iso' => $transaction->created_at->toIso8601String(),
+        ];
     }
 }
 

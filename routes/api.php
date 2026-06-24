@@ -43,6 +43,7 @@ use App\Http\Controllers\Api\User\SearchController;
 use App\Http\Controllers\Api\User\ServiceController;
 use App\Http\Controllers\Api\User\ServiceProviderController as UserServiceProviderController;
 use App\Http\Controllers\Api\User\TicketController;
+use App\Http\Controllers\Api\User\WalletController;
 use App\Http\Controllers\Api\Provider\AuthController as ProviderAuthController;
 use App\Http\Controllers\Api\Provider\BookingController as ProviderBookingController;
 use App\Http\Controllers\Api\Provider\ConfigController as ProviderConfigController;
@@ -117,6 +118,9 @@ Route::prefix('user')->group(function () {
 
         Route::get('order-returns', [UserOrderReturnController::class, 'index']);
         Route::get('order-returns/{orderReturn}', [UserOrderReturnController::class, 'show']);
+
+        Route::get('wallet', [WalletController::class, 'show']);
+        Route::get('wallet/transactions', [WalletController::class, 'transactions']);
 
         Route::get('bulk-orders', [UserBulkOrderController::class, 'index']);
         Route::post('bulk-orders', [UserBulkOrderController::class, 'store']);

@@ -124,6 +124,8 @@
 									{ "key": "mobile", "value": "{{register_provider_mobile}}", "type": "text" },
 									{ "key": "email", "value": "arjun.provider@example.com", "type": "text" },
 									{ "key": "address", "value": "45, service colony, Indore", "type": "text" },
+									{ "key": "latitude", "value": "22.7196", "type": "text" },
+									{ "key": "longitude", "value": "75.8577", "type": "text" },
 									{ "key": "role", "value": "provider", "type": "text" },
 									{ "key": "skills[0]", "value": "Pipe Repair", "type": "text" },
 									{ "key": "skills[1]", "value": "Leak Fixing", "type": "text" },
@@ -381,6 +383,8 @@
 							{ "key": "mobile", "value": "{{register_provider_mobile}}", "type": "text" },
 							{ "key": "email", "value": "arjun.provider@example.com", "type": "text" },
 							{ "key": "address", "value": "45, service colony, Indore", "type": "text" },
+							{ "key": "latitude", "value": "22.7196", "type": "text" },
+							{ "key": "longitude", "value": "75.8577", "type": "text" },
 							{ "key": "role", "value": "provider", "type": "text" },
 							{ "key": "skills[0]", "value": "Pipe Repair", "type": "text" },
 							{ "key": "skills[1]", "value": "Leak Fixing", "type": "text" },
@@ -395,7 +399,7 @@
 							{ "key": "pan_card", "type": "file", "src": [] }
 						] },
 						"url": "{{base_url}}/api/v1/auth/register",
-						"description": "**POST** `/api/v1/auth/register` (multipart)\n\nWhen `role=provider`, extra fields required:\n- skills[] (array)\n- experience (years)\n- aadhar_front, aadhar_back, pan_card (images)\n- account_number, account_holder_name, ifsc_code, bank_name, account_type\n\nReturns provider profile with status `pending`." }
+						"description": "**POST** `/api/v1/auth/register` (multipart)\n\nWhen `role=provider`, extra fields required:\n- skills[] (array)\n- experience (years)\n- latitude, longitude\n- aadhar_front, aadhar_back, pan_card (images)\n- account_number, account_holder_name, ifsc_code, bank_name, account_type\n\nReturns provider profile with status `pending`." }
 				},
 				{
 					"name": "Logout",
@@ -435,13 +439,16 @@
 					"url": { "raw": "{{base_url}}/api/user/services?category_id=&per_page=15", "query": [{ "key": "category_id", "value": "" }, { "key": "per_page", "value": "15" }] } } },
 				{ "name": "Service Detail", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{base_url}}/api/user/services/{{service_id}}" } },
 				{ "name": "Service Providers List", "request": { "auth": { "type": "noauth" }, "method": "GET",
-					"url": { "raw": "{{base_url}}/api/user/service-providers?category_id={{service_category_id}}&search=&per_page=15",
+					"url": { "raw": "{{base_url}}/api/user/service-providers?category_id={{service_category_id}}&latitude=22.7196&longitude=75.8577&search=&per_page=15",
 						"query": [
 							{ "key": "category_id", "value": "{{service_category_id}}", "description": "Filter by service category" },
+							{ "key": "latitude", "value": "22.7196", "description": "Required — user location" },
+							{ "key": "longitude", "value": "75.8577", "description": "Required — user location" },
+							{ "key": "radius_km", "value": "10", "disabled": true, "description": "Optional, default 10 km" },
 							{ "key": "search", "value": "" },
 							{ "key": "per_page", "value": "15" }
 						] },
-					"description": "List approved providers. Filter by service category_id." } },
+					"description": "List approved providers within radius_km (default 10) of latitude/longitude, sorted nearest first." } },
 				{ "name": "Service Provider Detail", "request": { "auth": { "type": "noauth" }, "method": "GET",
 					"url": "{{base_url}}/api/user/service-providers/{{service_provider_id}}",
 					"description": "Returns provider info, all services offered, rating & reviews." } },
@@ -521,6 +528,8 @@
 					"url": { "raw": "{{base_url}}/api/user/orders?status=quotation", "query": [{ "key": "status", "value": "quotation", "description": "Bulk orders awaiting quotation acceptance" }] } } },
 				{ "name": "Order History (Processing)", "request": { "method": "GET",
 					"url": { "raw": "{{base_url}}/api/user/orders?status=processing", "query": [{ "key": "status", "value": "processing" }] } } },
+				{ "name": "Order History (Returned)", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/user/orders?status=returned", "query": [{ "key": "status", "value": "returned", "description": "Orders with returned or refunded status" }] } } },
 				{ "name": "Order Detail", "request": { "method": "GET", "url": "{{base_url}}/api/user/orders/{{order_id}}",
 					"description": "Returns vendor, payment_status, tracking, tracking_timeline, invoice_url." } },
 				{ "name": "Download Invoice", "request": { "method": "GET", "url": "{{base_url}}/api/user/orders/{{order_id}}/invoice",
@@ -535,6 +544,18 @@
 					"description": "Only for delivered orders. quantity optional (defaults to full item qty). Order detail items include id, can_return, returnable_quantity." } },
 				{ "name": "My Return Requests", "request": { "method": "GET", "url": "{{base_url}}/api/user/order-returns" } },
 				{ "name": "Return Request Detail", "request": { "method": "GET", "url": "{{base_url}}/api/user/order-returns/{{return_id}}" } }
+			]
+		},
+		{
+			"name": "06b — Wallet",
+			"item": [
+				{ "name": "Wallet Balance", "request": { "method": "GET", "url": "{{base_url}}/api/user/wallet" } },
+				{ "name": "Wallet Transactions", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/user/wallet/transactions", "query": [
+						{ "key": "category", "value": "return_refund", "disabled": true, "description": "return_refund|withdrawal|withdrawal_refund|adjustment" },
+						{ "key": "direction", "value": "credit", "disabled": true, "description": "credit|debit" }
+					] },
+					"description": "Transaction history including return refunds credited on admin approval." } }
 			]
 		},
 		{

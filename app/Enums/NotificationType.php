@@ -8,4 +8,5 @@ enum NotificationType: string
     case Booking = 'booking';
     case Promotion = 'promotion';
     case System = 'system';
+    case Wallet = 'wallet';
 }

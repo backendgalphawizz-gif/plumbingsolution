@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Provider;
 use App\Http\Controllers\Api\Provider\Concerns\ResolvesProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
+use App\Services\ProviderRegistrationService;
 use App\Support\AdminValidation as V;
 use App\Support\ProviderApiFormatter;
 use Illuminate\Http\JsonResponse;
@@ -46,7 +47,9 @@ class ProfileController extends Controller
             }
         }
 
-        $data = $request->validate([
+        $locationRules = app(ProviderRegistrationService::class)->locationRules(required: false);
+
+        $data = $request->validate(array_merge([
             'name' => ['sometimes', ...V::nameRules()],
             'mobile' => V::profileMobileRules($user),
             'email' => V::profileEmailRules($user),
@@ -62,7 +65,7 @@ class ProfileController extends Controller
             'skills' => ['sometimes', 'array', 'min:1'],
             'skills.*' => ['required', 'string', 'max:50'],
             'experience' => ['sometimes', 'integer', 'min:0', 'max:50'],
-        ]);
+        ], $locationRules));
 
         $userUpdates = [];
         foreach (['name', 'mobile', 'address'] as $field) {
@@ -110,6 +113,8 @@ class ProfileController extends Controller
                 : null,
             'skills' => isset($data['skills']) ? array_values(array_map('trim', $data['skills'])) : null,
             'experience_years' => $data['experience'] ?? null,
+            'latitude' => array_key_exists('latitude', $data) ? round((float) $data['latitude'], 7) : null,
+            'longitude' => array_key_exists('longitude', $data) ? round((float) $data['longitude'], 7) : null,
         ], fn ($value) => $value !== null);
 
         if ($providerUpdates !== []) {
@@ -138,7 +143,9 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        $data = $request->validate([
+        $locationRules = app(ProviderRegistrationService::class)->locationRules(required: false);
+
+        $data = $request->validate(array_merge([
             'name' => V::nameRules(),
             'mobile' => array_merge(V::mobileRules(required: true), [Rule::unique('users', 'mobile')->ignore($user)]),
             'email' => [
@@ -151,7 +158,7 @@ class ProfileController extends Controller
             'address' => ['required', 'string', V::maxRule('address')],
             'service_area' => ['nullable', 'string', V::maxRule('address')],
             'avatar' => ['nullable', 'image', 'max:5120'],
-        ]);
+        ], $locationRules));
 
         $user->update([
             'name' => $data['name'],
@@ -174,6 +181,8 @@ class ProfileController extends Controller
             'name' => $data['name'],
             'mobile' => $data['mobile'],
             'service_area' => $data['service_area'] ?? $data['address'],
+            'latitude' => array_key_exists('latitude', $data) ? round((float) $data['latitude'], 7) : $provider->latitude,
+            'longitude' => array_key_exists('longitude', $data) ? round((float) $data['longitude'], 7) : $provider->longitude,
         ]);
 
         $user->load('serviceProvider');
