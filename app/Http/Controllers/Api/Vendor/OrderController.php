@@ -32,7 +32,7 @@ class OrderController extends Controller
         ]);
 
         $orders = $vendor->orders()
-            ->with(['user', 'items.product.images', 'payment'])
+            ->with(['user', 'items.product.images', 'items.returns', 'returns.orderItem', 'payment'])
             ->when($request->search, fn ($q, $s) => $q->where(function ($q) use ($s) {
                 $q->where('order_number', 'like', "%{$s}%")
                     ->orWhereHas('user', fn ($uq) => $uq->where('name', 'like', "%{$s}%"));
@@ -182,7 +182,7 @@ class OrderController extends Controller
             $notes,
         );
 
-        $order->load(['user', 'items.product.images', 'payment']);
+        $order->load(['user', 'items.product.images', 'items.returns', 'returns.orderItem', 'payment']);
 
         return $this->success(
             VendorApiFormatter::order($order, detailed: true),

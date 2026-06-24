@@ -37,7 +37,7 @@ trait ResolvesVendor
     protected function vendorOrder(Vendor $vendor, int $orderId)
     {
         return $vendor->orders()
-            ->with(['user', 'items.product.images', 'payment'])
+            ->with(['user', 'items.product.images', 'items.returns', 'returns.orderItem', 'payment'])
             ->whereKey($orderId)
             ->first();
     }
