@@ -108,7 +108,7 @@
 							]}}],
 							"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
 								"body": { "mode": "raw", "raw": "{\n  \"name\": \"Lois Buily\",\n  \"mobile\": \"{{register_mobile}}\",\n  \"email\": \"loisbecket@gmail.com\",\n  \"address\": \"12, abc colony, indore\",\n  \"role\": \"customer\",\n  \"fcm_token\": \"{{fcm_token}}\"\n}" },
-								"url": "{{base_url}}/api/user/auth/register",
+								"url": "{{base_url}}/api/v1/auth/register",
 								"description": "Requires OTP verified in R2. Returns token + user." }
 						},
 						{
@@ -137,7 +137,7 @@
 									{ "key": "aadhar_back", "type": "file", "src": [], "description": "Aadhar back image" },
 									{ "key": "pan_card", "type": "file", "src": [], "description": "PAN card image" }
 								] },
-								"url": "{{base_url}}/api/user/auth/register",
+								"url": "{{base_url}}/api/v1/auth/register",
 								"description": "Multipart register when role=provider. Verify OTP for register_provider_mobile first. Provider status starts as pending." }
 						}
 					]
@@ -306,7 +306,7 @@
 					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
 						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"type\": \"login\"\n}" },
 						"url": "{{base_url}}/api/v1/auth/send-otp",
-						"description": "**POST** `/api/v1/auth/send-otp`\n\n**Body:** `{ \"mobile\": \"9876500001\", \"type\": \"login\" }`\n\nReturns 4-digit OTP in `data.otp`. Mobile must already be registered." }
+						"description": "**POST** `/api/v1/auth/send-otp`\n\n**Body:** `{ \"mobile\": \"9876500001\", \"type\": \"login\" }`\n\nWorks for customer and provider login. OTP type is chosen from the registered account." }
 				},
 				{
 					"name": "Send OTP (Register)",
@@ -330,7 +330,7 @@
 					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
 						"body": { "mode": "raw", "raw": "{\n  \"mobile\": \"{{mobile}}\",\n  \"otp\": {{otp}},\n  \"type\": \"login\",\n  \"fcm_token\": \"{{fcm_token}}\"\n}" },
 						"url": "{{base_url}}/api/v1/auth/verify-otp",
-						"description": "**POST** `/api/v1/auth/verify-otp`\n\n**Body:** `{ \"mobile\", \"otp\", \"type\": \"login\" }`\n\nReturns `token` + `user` on success (same as login)." }
+						"description": "**POST** `/api/v1/auth/verify-otp`\n\n**Body:** `{ \"mobile\", \"otp\", \"type\": \"login\" }`\n\nReturns `token` + `user` for customer or provider." }
 				},
 				{
 					"name": "Verify OTP (Register)",
@@ -365,8 +365,8 @@
 					]}}],
 					"request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
 						"body": { "mode": "raw", "raw": "{\n  \"name\": \"Lois Buily\",\n  \"mobile\": \"{{register_mobile}}\",\n  \"email\": \"loisbecket@gmail.com\",\n  \"address\": \"12, abc colony, indore\",\n  \"role\": \"customer\",\n  \"fcm_token\": \"{{fcm_token}}\"\n}" },
-						"url": "{{base_url}}/api/user/auth/register",
-						"description": "**POST** `/api/user/auth/register`\n\nRequires OTP verified first.\n\n**Customer/vendor:** JSON body with name, mobile, role, email?, address?\n\n**Provider:** use **Register (Provider)** — multipart with skills, experience, KYC images, bank details." }
+						"url": "{{base_url}}/api/v1/auth/register",
+						"description": "**POST** `/api/v1/auth/register`\n\nRequires OTP verified first.\n\n**Customer/vendor:** JSON body with name, mobile, role, email?, address?\n\n**Provider:** use **Register (Provider)** — multipart with skills, experience, KYC images, bank details." }
 				},
 				{
 					"name": "Register (Provider)",
@@ -394,8 +394,8 @@
 							{ "key": "aadhar_back", "type": "file", "src": [] },
 							{ "key": "pan_card", "type": "file", "src": [] }
 						] },
-						"url": "{{base_url}}/api/user/auth/register",
-						"description": "**POST** `/api/user/auth/register` (multipart)\n\nWhen `role=provider`, extra fields required:\n- skills[] (array)\n- experience (years)\n- aadhar_front, aadhar_back, pan_card (images)\n- account_number, account_holder_name, ifsc_code, bank_name, account_type\n\nReturns provider profile with status `pending`." }
+						"url": "{{base_url}}/api/v1/auth/register",
+						"description": "**POST** `/api/v1/auth/register` (multipart)\n\nWhen `role=provider`, extra fields required:\n- skills[] (array)\n- experience (years)\n- aadhar_front, aadhar_back, pan_card (images)\n- account_number, account_holder_name, ifsc_code, bank_name, account_type\n\nReturns provider profile with status `pending`." }
 				},
 				{
 					"name": "Logout",

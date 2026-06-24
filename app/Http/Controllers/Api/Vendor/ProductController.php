@@ -195,6 +195,13 @@ class ProductController extends Controller
             return $response;
         }
 
+        if ($product->orderItems()->exists()) {
+            return $this->error(
+                'This product cannot be deleted because it is linked to existing orders. You can deactivate it instead.',
+                422,
+            );
+        }
+
         foreach ($product->images as $image) {
             Storage::disk('public')->delete($image->image_path);
         }

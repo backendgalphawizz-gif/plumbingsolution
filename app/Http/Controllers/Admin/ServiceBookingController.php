@@ -103,17 +103,23 @@ class ServiceBookingController extends Controller
             'notes' => V::notesRules(),
         ]);
 
+        $nextStatus = BookingStatus::from($request->status);
+
+        if (! $serviceBooking->status->canTransitionTo($nextStatus)) {
+            return back()->with('error', 'Booking cannot move from '.$serviceBooking->status->label().' to '.$nextStatus->label().'. Follow the next step in the service flow.');
+        }
+
         $wasCompleted = $serviceBooking->status === BookingStatus::Completed;
 
-        $updates = ['status' => $request->status];
-        if ($request->status === BookingStatus::Completed->value) {
+        $updates = ['status' => $nextStatus];
+        if ($nextStatus === BookingStatus::Completed) {
             $updates['completed_at'] = now();
         }
 
         $serviceBooking->update($updates);
-        $this->log($serviceBooking, $request->status, $request->notes);
+        $this->log($serviceBooking, $nextStatus->value, $request->notes);
 
-        if (! $wasCompleted && $request->status === BookingStatus::Completed->value) {
+        if (! $wasCompleted && $nextStatus === BookingStatus::Completed) {
             $serviceBooking->load('serviceProvider.user');
             if ($serviceBooking->serviceProvider?->user && $serviceBooking->amount > 0) {
                 app(WalletService::class)->credit(
@@ -126,7 +132,7 @@ class ServiceBookingController extends Controller
         app(PushNotificationService::class)->bookingStatusUpdated(
             $serviceBooking->fresh()->load(['user', 'serviceProvider.user']),
             'Booking Status Updated',
-            'Your booking status is now '.str_replace('_', ' ', $request->status).'.',
+            'Your booking status is now '.$nextStatus->label().'.',
             'booking_status_updated',
         );
 

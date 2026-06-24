@@ -51,4 +51,9 @@ class Product extends Model
     {
         return $this->hasMany(ProductReview::class)->where('status', true);
     }
+
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
 }
