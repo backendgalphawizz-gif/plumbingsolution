@@ -96,6 +96,7 @@ class CheckoutController extends Controller
                 $address->full_name, $address->house_no, $address->road_area,
                 $address->city, $address->state, $address->pincode,
             ])),
+            'shipping_address_label' => $address->label,
             'notes' => $data['notes'] ?? null,
         ]);
 

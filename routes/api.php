@@ -31,8 +31,9 @@ use App\Http\Controllers\Api\User\CheckoutController;
 use App\Http\Controllers\Api\User\CouponController;
 use App\Http\Controllers\Api\User\CmsController;
 use App\Http\Controllers\Api\User\HomeController;
-use App\Http\Controllers\Api\User\NotificationController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\User\OrderController;
+use App\Http\Controllers\Api\User\OrderReturnController as UserOrderReturnController;
 use App\Http\Controllers\Api\User\ProductController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\PromoCodeController;
@@ -112,6 +113,10 @@ Route::prefix('user')->group(function () {
         Route::get('orders/{order}', [OrderController::class, 'show']);
         Route::get('orders/{order}/invoice', [OrderController::class, 'invoice']);
         Route::post('orders/{order}/cancel', [OrderController::class, 'cancel']);
+        Route::post('orders/{order}/items/{orderItem}/return', [UserOrderReturnController::class, 'store']);
+
+        Route::get('order-returns', [UserOrderReturnController::class, 'index']);
+        Route::get('order-returns/{orderReturn}', [UserOrderReturnController::class, 'show']);
 
         Route::get('bulk-orders', [UserBulkOrderController::class, 'index']);
         Route::post('bulk-orders', [UserBulkOrderController::class, 'store']);

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\NotificationType;
 use App\Models\AppNotification;
 use App\Models\Order;
+use App\Models\OrderReturn;
 use App\Models\ServiceBooking;
 use App\Models\Setting;
 use App\Models\User;
@@ -113,6 +114,72 @@ class PushNotificationService
         }
     }
 
+    public function orderReturnRequested(OrderReturn $return): void
+    {
+        $return->loadMissing(['order', 'orderItem', 'user', 'vendor.user']);
+        $order = $return->order;
+        $itemName = $return->orderItem?->product_name ?? 'item';
+
+        if ($return->user) {
+            $this->sendToUser(
+                $return->user,
+                'Return Request Submitted',
+                "Your return request {$return->return_number} for {$itemName} is under review.",
+                NotificationType::Order,
+                $this->orderReturnData($return, 'return_requested'),
+                $return,
+            );
+        }
+
+        if ($return->vendor?->user) {
+            $this->sendToUser(
+                $return->vendor->user,
+                'Return Request Received',
+                "A return was requested for order {$order?->order_number} ({$itemName}).",
+                NotificationType::Order,
+                $this->orderReturnData($return, 'return_requested_vendor'),
+                $return,
+            );
+        }
+    }
+
+    public function orderReturnReviewed(OrderReturn $return, bool $approved): void
+    {
+        $return->loadMissing(['order', 'orderItem', 'user', 'vendor.user']);
+        $itemName = $return->orderItem?->product_name ?? 'item';
+        $action = $approved ? 'return_approved' : 'return_rejected';
+        $title = $approved ? 'Return Approved' : 'Return Rejected';
+        $message = $approved
+            ? "Your return {$return->return_number} for {$itemName} has been approved."
+            : "Your return {$return->return_number} for {$itemName} was rejected.";
+
+        if ($return->admin_notes) {
+            $message .= ' '.$return->admin_notes;
+        }
+
+        if ($return->user) {
+            $this->sendToUser(
+                $return->user,
+                $title,
+                $message,
+                NotificationType::Order,
+                $this->orderReturnData($return, $action),
+                $return,
+            );
+        }
+
+        if ($approved && $return->vendor?->user) {
+            $this->sendToUser(
+                $return->vendor->user,
+                'Return Approved',
+                "Return {$return->return_number} for order {$return->order?->order_number} was approved.",
+                NotificationType::Order,
+                $this->orderReturnData($return, 'return_approved_vendor'),
+                $return,
+            );
+        }
+    }
+
     public function bookingCreated(ServiceBooking $booking): void
     {
         $booking->loadMissing(['user', 'serviceProvider.user']);
@@ -171,6 +238,20 @@ class PushNotificationService
             'type_id' => (string) $order->id,
             'order_number' => $order->order_number,
             'status' => $order->status->value ?? (string) $order->status,
+            'chat' => '',
+        ];
+    }
+
+    private function orderReturnData(OrderReturn $return, string $action): array
+    {
+        return [
+            'type' => $action,
+            'return_id' => (string) $return->id,
+            'return_number' => $return->return_number,
+            'order_id' => (string) $return->order_id,
+            'type_id' => (string) $return->order_id,
+            'order_number' => $return->order?->order_number,
+            'status' => $return->status->value,
             'chat' => '',
         ];
     }

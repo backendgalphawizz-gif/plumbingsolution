@@ -528,7 +528,13 @@
 				{ "name": "Cancel Order", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
 					"body": { "mode": "raw", "raw": "{\n  \"reason\": \"Ordered by mistake\"\n}" },
 					"url": "{{base_url}}/api/user/orders/{{order_id}}/cancel",
-					"description": "Only for processing orders. Shows cancel modal in app." } }
+					"description": "Only for processing orders. Shows cancel modal in app." } },
+				{ "name": "Request Item Return", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }],
+					"body": { "mode": "raw", "raw": "{\n  \"reason\": \"Product damaged on delivery\",\n  \"quantity\": 1\n}" },
+					"url": "{{base_url}}/api/user/orders/{{order_id}}/items/{{order_item_id}}/return",
+					"description": "Only for delivered orders. quantity optional (defaults to full item qty). Order detail items include id, can_return, returnable_quantity." } },
+				{ "name": "My Return Requests", "request": { "method": "GET", "url": "{{base_url}}/api/user/order-returns" } },
+				{ "name": "Return Request Detail", "request": { "method": "GET", "url": "{{base_url}}/api/user/order-returns/{{return_id}}" } }
 			]
 		},
 		{

@@ -41,6 +41,67 @@
     @include('admin.partials.flash-toast')
     @stack('scripts')
     <script>
+    window.showAdminFlashToast = function(type, message, title) {
+        const existing = document.getElementById('flash-toast-backdrop');
+        if (existing) {
+            existing.remove();
+        }
+
+        const isSuccess = type === 'success';
+        const toastTitle = title || (isSuccess ? 'Success' : 'Something went wrong');
+        const iconSvg = isSuccess
+            ? '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+            : '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+
+        const backdrop = document.createElement('div');
+        backdrop.className = 'flash-toast-backdrop';
+        backdrop.id = 'flash-toast-backdrop';
+        backdrop.setAttribute('role', 'presentation');
+        backdrop.innerHTML = `
+            <div class="flash-toast flash-toast-${isSuccess ? 'success' : 'error'}" role="alertdialog" aria-modal="true" aria-labelledby="flash-toast-title">
+                <button type="button" class="flash-toast-close" data-flash-toast-close aria-label="Close">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+                <div class="flash-toast-icon">${iconSvg}</div>
+                <div class="flash-toast-body">
+                    <p class="flash-toast-title" id="flash-toast-title">${toastTitle}</p>
+                    <p class="flash-toast-message"></p>
+                </div>
+                <button type="button" class="flash-toast-btn" data-flash-toast-close>OK</button>
+            </div>
+        `;
+
+        backdrop.querySelector('.flash-toast-message').textContent = message;
+        document.body.appendChild(backdrop);
+
+        const closeFlashToast = () => {
+            if (backdrop.classList.contains('is-hiding')) {
+                return;
+            }
+            backdrop.classList.add('is-hiding');
+            setTimeout(() => backdrop.remove(), 180);
+        };
+
+        backdrop.querySelectorAll('[data-flash-toast-close]').forEach((btn) => {
+            btn.addEventListener('click', closeFlashToast);
+        });
+
+        backdrop.addEventListener('click', (event) => {
+            if (event.target === backdrop) {
+                closeFlashToast();
+            }
+        });
+
+        const onEscape = (event) => {
+            if (event.key === 'Escape') {
+                closeFlashToast();
+                document.removeEventListener('keydown', onEscape);
+            }
+        };
+
+        document.addEventListener('keydown', onEscape);
+    };
+
     document.addEventListener('DOMContentLoaded', () => {
         const flashBackdrop = document.getElementById('flash-toast-backdrop');
         if (flashBackdrop) {

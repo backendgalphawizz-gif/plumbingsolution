@@ -53,7 +53,7 @@ class OrderController extends Controller
 
         if ($filter === 'all') {
             $productOrders = $request->user()->orders()
-                ->with(['items', 'vendor', 'payment'])
+                ->with(['items.returns', 'vendor', 'payment'])
                 ->latest()
                 ->get()
                 ->map(fn (Order $order) => array_merge(
@@ -98,7 +98,7 @@ class OrderController extends Controller
         }
 
         $orders = $request->user()->orders()
-            ->with(['items', 'vendor', 'payment'])
+            ->with(['items.returns', 'vendor', 'payment'])
             ->when($filter !== 'all', function ($q) use ($filter) {
                 $map = [
                     'processing' => [OrderStatus::Pending, OrderStatus::Accepted, OrderStatus::Packed],
@@ -130,7 +130,7 @@ class OrderController extends Controller
     {
         abort_if($order->user_id !== $request->user()->id, 403);
 
-        $order->load(['items', 'vendor', 'payment', 'statusLogs']);
+        $order->load(['items.returns', 'vendor', 'payment', 'statusLogs']);
 
         return $this->success(array_merge(
             UserApiFormatter::order($order, detailed: true),
