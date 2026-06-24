@@ -386,6 +386,8 @@
 					"url": { "raw": "{{base_url}}/api/v2/orders?status=delivered", "query": [{ "key": "status", "value": "delivered" }] } } },
 				{ "name": "Order History (Cancelled)", "request": { "method": "GET",
 					"url": { "raw": "{{base_url}}/api/v2/orders?status=cancelled", "query": [{ "key": "status", "value": "cancelled" }] } } },
+				{ "name": "Order History (Returned)", "request": { "method": "GET",
+					"url": { "raw": "{{base_url}}/api/v2/orders?status=returned", "query": [{ "key": "status", "value": "returned", "description": "Orders with returned or refunded status" }] } } },
 				{ "name": "Order Detail", "request": { "method": "GET", "url": "{{base_url}}/api/v2/orders/{{order_id}}" } },
 				{ "name": "Accept Order", "request": { "method": "POST", "url": "{{base_url}}/api/v2/orders/{{order_id}}/accept",
 					"description": "Pending → Accepted. Requires approved vendor." } },
@@ -515,8 +517,22 @@
 		{
 			"name": "08 — Notifications",
 			"item": [
-				{ "name": "List Notifications", "request": { "method": "GET", "url": "{{base_url}}/api/v2/notifications" } },
-				{ "name": "Mark as Read", "request": { "method": "POST", "url": "{{base_url}}/api/v2/notifications/{{notification_id}}/read" } }
+				{
+					"name": "List Notifications",
+					"event": [{ "listen": "test", "script": { "exec": [
+						"const j = pm.response.json();",
+						"if (j.data?.items?.[0]?.id) { pm.collectionVariables.set('notification_id', String(j.data.items[0].id)); pm.environment.set('notification_id', String(j.data.items[0].id)); }",
+						"pm.test('OK', () => pm.response.to.have.status(200));"
+					], "type": "text/javascript" }}],
+					"request": { "method": "GET", "url": { "raw": "{{base_url}}/api/v2/notifications?per_page=20", "query": [{ "key": "per_page", "value": "20" }, { "key": "unread_only", "value": "0", "disabled": true }] },
+						"description": "**GET** `/api/v2/notifications`\n\nReturns `unread_count`, `items`, and `pagination`. Optional: `unread_only=1`." }
+				},
+				{
+					"name": "Mark Notification as Read",
+					"event": [{ "listen": "test", "script": { "exec": ["pm.test('OK', () => pm.response.to.have.status(200));"], "type": "text/javascript" }}],
+					"request": { "method": "POST", "url": "{{base_url}}/api/v2/notifications/{{notification_id}}/read",
+						"description": "**POST** `/api/v2/notifications/{id}/read`\n\nMarks one notification as read. Returns updated notification and `unread_count`." }
+				}
 			]
 		}
 	]

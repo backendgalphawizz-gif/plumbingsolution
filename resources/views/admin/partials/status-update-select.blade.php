@@ -32,19 +32,32 @@
                 }
 
                 const alertMessage = 'This status change is not allowed. Follow the correct step-by-step flow.';
+                const showBlockedStatusPopup = () => {
+                    if (typeof window.showAdminFlashToast === 'function') {
+                        window.showAdminFlashToast('error', alertMessage, 'Status not allowed');
+                        return;
+                    }
+                    alert(alertMessage);
+                };
+
+                let lastAllowedIndex = select.selectedIndex;
 
                 select.addEventListener('change', () => {
                     const option = select.options[select.selectedIndex];
                     if (option && option.dataset.allowed !== '1') {
-                        alert(alertMessage);
+                        showBlockedStatusPopup();
+                        select.selectedIndex = lastAllowedIndex;
+                        return;
                     }
+
+                    lastAllowedIndex = select.selectedIndex;
                 });
 
                 form.addEventListener('submit', (event) => {
                     const option = select.options[select.selectedIndex];
                     if (!option || option.dataset.allowed !== '1') {
                         event.preventDefault();
-                        alert(alertMessage);
+                        showBlockedStatusPopup();
                     }
                 });
             });

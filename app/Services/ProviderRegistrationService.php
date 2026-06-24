@@ -14,7 +14,7 @@ class ProviderRegistrationService
 {
     public function rules(): array
     {
-        return [
+        return array_merge($this->locationRules(), [
             'skills' => ['required', 'array', 'min:1'],
             'skills.*' => ['required', 'string', 'max:50'],
             'experience' => ['required', 'integer', 'min:0', 'max:50'],
@@ -26,6 +26,16 @@ class ProviderRegistrationService
             'ifsc_code' => ['required', 'string', 'max:11', 'regex:/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/'],
             'bank_name' => ['required', 'string', 'max:100'],
             'account_type' => ['required', 'in:savings,current'],
+        ]);
+    }
+
+    public function locationRules(bool $required = true): array
+    {
+        $rule = $required ? 'required' : 'sometimes';
+
+        return [
+            'latitude' => [$rule, 'numeric', 'between:-90,90'],
+            'longitude' => [$rule, 'numeric', 'between:-180,180'],
         ];
     }
 
@@ -51,6 +61,8 @@ class ProviderRegistrationService
                 'skills' => array_values(array_map('trim', $data['skills'])),
                 'experience_years' => $data['experience'],
                 'service_area' => $user->address,
+                'latitude' => round((float) $data['latitude'], 7),
+                'longitude' => round((float) $data['longitude'], 7),
                 'status' => ProviderStatus::Pending,
                 'account_number' => $data['account_number'],
                 'account_holder_name' => $data['account_holder_name'],

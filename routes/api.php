@@ -31,8 +31,9 @@ use App\Http\Controllers\Api\User\CheckoutController;
 use App\Http\Controllers\Api\User\CouponController;
 use App\Http\Controllers\Api\User\CmsController;
 use App\Http\Controllers\Api\User\HomeController;
-use App\Http\Controllers\Api\User\NotificationController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\User\OrderController;
+use App\Http\Controllers\Api\User\OrderReturnController as UserOrderReturnController;
 use App\Http\Controllers\Api\User\ProductController;
 use App\Http\Controllers\Api\User\ProfileController;
 use App\Http\Controllers\Api\User\PromoCodeController;
@@ -42,6 +43,7 @@ use App\Http\Controllers\Api\User\SearchController;
 use App\Http\Controllers\Api\User\ServiceController;
 use App\Http\Controllers\Api\User\ServiceProviderController as UserServiceProviderController;
 use App\Http\Controllers\Api\User\TicketController;
+use App\Http\Controllers\Api\User\WalletController;
 use App\Http\Controllers\Api\Provider\AuthController as ProviderAuthController;
 use App\Http\Controllers\Api\Provider\BookingController as ProviderBookingController;
 use App\Http\Controllers\Api\Provider\ConfigController as ProviderConfigController;
@@ -112,6 +114,13 @@ Route::prefix('user')->group(function () {
         Route::get('orders/{order}', [OrderController::class, 'show']);
         Route::get('orders/{order}/invoice', [OrderController::class, 'invoice']);
         Route::post('orders/{order}/cancel', [OrderController::class, 'cancel']);
+        Route::post('orders/{order}/items/{orderItem}/return', [UserOrderReturnController::class, 'store']);
+
+        Route::get('order-returns', [UserOrderReturnController::class, 'index']);
+        Route::get('order-returns/{orderReturn}', [UserOrderReturnController::class, 'show']);
+
+        Route::get('wallet', [WalletController::class, 'show']);
+        Route::get('wallet/transactions', [WalletController::class, 'transactions']);
 
         Route::get('bulk-orders', [UserBulkOrderController::class, 'index']);
         Route::post('bulk-orders', [UserBulkOrderController::class, 'store']);

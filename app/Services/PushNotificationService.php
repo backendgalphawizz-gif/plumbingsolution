@@ -5,10 +5,12 @@ namespace App\Services;
 use App\Enums\NotificationType;
 use App\Models\AppNotification;
 use App\Models\Order;
+use App\Models\OrderReturn;
 use App\Models\ServiceBooking;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserNotification;
+use App\Models\WalletTransaction;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 
@@ -113,6 +115,95 @@ class PushNotificationService
         }
     }
 
+    public function orderReturnRequested(OrderReturn $return): void
+    {
+        $return->loadMissing(['order', 'orderItem', 'user', 'vendor.user']);
+        $order = $return->order;
+        $itemName = $return->orderItem?->product_name ?? 'item';
+
+        if ($return->user) {
+            $this->sendToUser(
+                $return->user,
+                'Return Request Submitted',
+                "Your return request {$return->return_number} for {$itemName} is under review.",
+                NotificationType::Order,
+                $this->orderReturnData($return, 'return_requested'),
+                $return,
+            );
+        }
+
+        if ($return->vendor?->user) {
+            $this->sendToUser(
+                $return->vendor->user,
+                'Return Request Received',
+                "A return was requested for order {$order?->order_number} ({$itemName}).",
+                NotificationType::Order,
+                $this->orderReturnData($return, 'return_requested_vendor'),
+                $return,
+            );
+        }
+    }
+
+    public function orderReturnReviewed(OrderReturn $return, bool $approved, ?WalletTransaction $walletTransaction = null): void
+    {
+        $return->loadMissing(['order', 'orderItem', 'user', 'vendor.user']);
+        $itemName = $return->orderItem?->product_name ?? 'item';
+        $action = $approved ? 'return_approved' : 'return_rejected';
+        $title = $approved ? 'Return Approved' : 'Return Rejected';
+
+        if ($approved) {
+            $amount = number_format((float) $return->refund_amount, 2);
+            $message = "Your return {$return->return_number} for {$itemName} has been approved. ₹{$amount} credited to your wallet.";
+        } else {
+            $message = "Your return {$return->return_number} for {$itemName} was rejected.";
+        }
+
+        if ($return->admin_notes) {
+            $message .= ' '.$return->admin_notes;
+        }
+
+        $data = $this->orderReturnData($return, $action);
+        if ($walletTransaction) {
+            $data['wallet_transaction_id'] = (string) $walletTransaction->id;
+            $data['wallet_transaction_ref'] = $walletTransaction->transaction_id;
+            $data['refund_amount'] = (string) $return->refund_amount;
+            $data['wallet_balance'] = (string) round((float) $return->user?->wallet_balance, 2);
+        }
+
+        if ($return->user) {
+            $this->sendToUser(
+                $return->user,
+                $title,
+                $message,
+                NotificationType::Order,
+                $data,
+                $return,
+            );
+        }
+
+        if ($approved && $return->vendor?->user) {
+            $this->sendToUser(
+                $return->vendor->user,
+                'Return Approved',
+                "Return {$return->return_number} for order {$return->order?->order_number} was approved.",
+                NotificationType::Order,
+                $this->orderReturnData($return, 'return_approved_vendor'),
+                $return,
+            );
+        }
+
+        if (! $approved && $return->vendor?->user) {
+            $this->sendToUser(
+                $return->vendor->user,
+                'Return Rejected',
+                "Return {$return->return_number} for order {$return->order?->order_number} was rejected.",
+                NotificationType::Order,
+                $this->orderReturnData($return, 'return_rejected_vendor'),
+                $return,
+            );
+        }
+    }
+
     public function bookingCreated(ServiceBooking $booking): void
     {
         $booking->loadMissing(['user', 'serviceProvider.user']);
@@ -171,6 +262,38 @@ class PushNotificationService
             'type_id' => (string) $order->id,
             'order_number' => $order->order_number,
             'status' => $order->status->value ?? (string) $order->status,
+            'chat' => '',
+        ];
+    }
+
+    private function orderReturnData(OrderReturn $return, string $action): array
+    {
+        return [
+            'type' => $action,
+            'return_id' => (string) $return->id,
+            'return_number' => $return->return_number,
+            'order_id' => (string) $return->order_id,
+            'type_id' => (string) $return->order_id,
+            'order_number' => $return->order?->order_number,
+            'status' => $return->status->value,
+            'refund_amount' => (string) $return->refund_amount,
+            'chat' => '',
+        ];
+    }
+
+    private function walletTransactionData(WalletTransaction $transaction, string $action): array
+    {
+        return [
+            'type' => $action,
+            'wallet_transaction_id' => (string) $transaction->id,
+            'transaction_id' => $transaction->transaction_id,
+            'direction' => $transaction->direction,
+            'category' => $transaction->category->value,
+            'amount' => (string) $transaction->amount,
+            'balance_after' => (string) $transaction->balance_after,
+            'order_id' => $transaction->metadata['order_id'] ?? '',
+            'return_id' => $transaction->reference_id ? (string) $transaction->reference_id : '',
+            'type_id' => (string) $transaction->id,
             'chat' => '',
         ];
     }

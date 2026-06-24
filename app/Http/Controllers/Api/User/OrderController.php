@@ -24,7 +24,7 @@ class OrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'status' => ['nullable', Rule::in(['all', 'processing', 'out_for_delivery', 'delivered', 'cancelled', 'quotation'])],
+            'status' => ['nullable', Rule::in(['all', 'processing', 'out_for_delivery', 'delivered', 'cancelled', 'returned', 'quotation'])],
         ]);
 
         $filter = $request->get('status', 'all');
@@ -53,7 +53,7 @@ class OrderController extends Controller
 
         if ($filter === 'all') {
             $productOrders = $request->user()->orders()
-                ->with(['items', 'vendor', 'payment'])
+                ->with(['items.returns', 'vendor', 'payment'])
                 ->latest()
                 ->get()
                 ->map(fn (Order $order) => array_merge(
@@ -98,13 +98,14 @@ class OrderController extends Controller
         }
 
         $orders = $request->user()->orders()
-            ->with(['items', 'vendor', 'payment'])
+            ->with(['items.returns', 'vendor', 'payment'])
             ->when($filter !== 'all', function ($q) use ($filter) {
                 $map = [
                     'processing' => [OrderStatus::Pending, OrderStatus::Accepted, OrderStatus::Packed],
                     'out_for_delivery' => [OrderStatus::Shipped],
                     'delivered' => [OrderStatus::Delivered],
                     'cancelled' => [OrderStatus::Cancelled],
+                    'returned' => [OrderStatus::Returned, OrderStatus::Refunded],
                 ];
                 if (isset($map[$filter])) {
                     $q->whereIn('status', array_map(fn ($s) => $s->value, $map[$filter]));
@@ -130,7 +131,7 @@ class OrderController extends Controller
     {
         abort_if($order->user_id !== $request->user()->id, 403);
 
-        $order->load(['items', 'vendor', 'payment', 'statusLogs']);
+        $order->load(['items.returns', 'vendor', 'payment', 'statusLogs']);
 
         return $this->success(array_merge(
             UserApiFormatter::order($order, detailed: true),

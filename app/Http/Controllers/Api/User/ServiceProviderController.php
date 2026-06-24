@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\ServiceProvider;
 use App\Models\ServiceProviderReview;
+use App\Services\ProviderRegistrationService;
 use App\Support\AdminValidation as V;
 use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
@@ -18,13 +19,19 @@ class ServiceProviderController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $request->validate([
+        $request->validate(array_merge([
             'search' => V::searchRules(),
             'category_id' => ['nullable', 'integer', 'exists:service_categories,id'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
-        ]);
+            'radius_km' => ['nullable', 'numeric', 'min:1', 'max:50'],
+        ], app(ProviderRegistrationService::class)->locationRules()));
+
+        $latitude = (float) $request->latitude;
+        $longitude = (float) $request->longitude;
+        $radiusKm = (float) ($request->radius_km ?? 10);
 
         $providers = ServiceProvider::where('status', ProviderStatus::Approved)
+            ->nearby($latitude, $longitude, $radiusKm)
             ->with('images')
             ->withAvg('reviews', 'rating')
             ->withCount('reviews')
@@ -36,10 +43,14 @@ class ServiceProviderController extends Controller
                     ->orWhere('mobile', 'like', "%{$s}%")
                     ->orWhere('service_area', 'like', "%{$s}%");
             }))
-            ->latest()
             ->paginate($request->integer('per_page', 15));
 
         return $this->success([
+            'location' => [
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+                'radius_km' => $radiusKm,
+            ],
             'items' => collect($providers->items())->map(fn ($p) => UserApiFormatter::serviceProvider($p)),
             'pagination' => [
                 'current_page' => $providers->currentPage(),

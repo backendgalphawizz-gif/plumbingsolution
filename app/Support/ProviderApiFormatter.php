@@ -51,6 +51,8 @@ class ProviderApiFormatter
             'skills' => $provider->skills ?? [],
             'experience' => $provider->experience_years,
             'service_area' => $provider->service_area,
+            'latitude' => $provider->latitude,
+            'longitude' => $provider->longitude,
             'status' => $provider->status->value,
             'rejection_reason' => $provider->rejection_reason,
             'approved_at' => $provider->approved_at?->toIso8601String(),
@@ -76,6 +78,8 @@ class ProviderApiFormatter
             'email' => $user->email,
             'address' => $user->address,
             'service_area' => $provider?->service_area,
+            'latitude' => $provider?->latitude,
+            'longitude' => $provider?->longitude,
             'avatar' => $user->avatar ? asset('storage/'.$user->avatar) : null,
         ];
     }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\User;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
@@ -16,8 +16,9 @@ class NotificationController extends Controller
     {
         $notifications = $request->user()->userNotifications()
             ->with('notification')
+            ->when($request->boolean('unread_only'), fn ($q) => $q->where('is_read', false))
             ->latest()
-            ->paginate(20);
+            ->paginate($request->integer('per_page', 20));
 
         return $this->success([
             'unread_count' => $request->user()->userNotifications()->where('is_read', false)->count(),
@@ -32,11 +33,20 @@ class NotificationController extends Controller
 
     public function markRead(Request $request, UserNotification $userNotification): JsonResponse
     {
-        abort_if($userNotification->user_id !== $request->user()->id, 403);
+        if ($userNotification->user_id !== $request->user()->id) {
+            return $this->error('Notification not found.', 404);
+        }
 
-        $userNotification->update(['is_read' => true, 'read_at' => now()]);
+        if (! $userNotification->is_read) {
+            $userNotification->update(['is_read' => true, 'read_at' => now()]);
+        }
 
-        return $this->success(null, 'Marked as read.');
+        $userNotification->load('notification');
+
+        return $this->success([
+            'notification' => $this->formatItem($userNotification),
+            'unread_count' => $request->user()->userNotifications()->where('is_read', false)->count(),
+        ], 'Marked as read.');
     }
 
     private function formatItem(UserNotification $n): array
@@ -55,6 +65,8 @@ class NotificationController extends Controller
             'data' => $data,
             'order_id' => $data['order_id'] ?? null,
             'booking_id' => $data['booking_id'] ?? null,
+            'return_id' => $data['return_id'] ?? null,
+            'wallet_transaction_id' => $data['wallet_transaction_id'] ?? null,
             'type_id' => $data['type_id'] ?? null,
             'action' => $data['type'] ?? null,
         ];

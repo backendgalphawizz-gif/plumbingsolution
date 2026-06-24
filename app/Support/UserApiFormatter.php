@@ -4,6 +4,9 @@ namespace App\Support;
 
 use App\Enums\BookingStatus;
 use App\Enums\OrderStatus;
+use App\Models\OrderReturn;
+use App\Models\WalletTransaction;
+use App\Enums\WalletTransactionCategory;
 use App\Models\Banner;
 use App\Models\BulkOrder;
 use App\Models\CartItem;
@@ -56,6 +59,8 @@ class UserApiFormatter
             'skills' => $provider->skills ?? [],
             'experience' => $provider->experience_years,
             'service_area' => $provider->service_area,
+            'latitude' => $provider->latitude,
+            'longitude' => $provider->longitude,
             'bank' => [
                 'account_number' => $provider->account_number,
                 'account_holder_name' => $provider->account_holder_name,
@@ -174,6 +179,8 @@ class UserApiFormatter
             'skills' => $provider->skills ?? [],
             'experience_years' => $provider->experience_years,
             'service_area' => $provider->service_area,
+            'latitude' => $provider->latitude,
+            'longitude' => $provider->longitude,
             'image' => $provider->avatar
                 ? asset('storage/'.$provider->avatar)
                 : ($primaryImage ? asset('storage/'.$primaryImage->image_path) : null),
@@ -182,6 +189,10 @@ class UserApiFormatter
             'reviews_count' => (int) ($provider->reviews_count ?? 0),
             'services_count' => $provider->relationLoaded('services') ? $provider->services->count() : null,
         ];
+
+        if (isset($provider->distance_km)) {
+            $data['distance_km'] = round((float) $provider->distance_km, 2);
+        }
 
         if ($detailed) {
             $data['services'] = $provider->relationLoaded('services')
@@ -242,6 +253,8 @@ class UserApiFormatter
             OrderStatus::Shipped => 'out_for_delivery',
             OrderStatus::Delivered => 'delivered',
             OrderStatus::Cancelled => 'cancelled',
+            OrderStatus::Returned => 'returned',
+            OrderStatus::Refunded => 'refunded',
             default => $status->value,
         };
     }
@@ -256,6 +269,7 @@ class UserApiFormatter
             'total_amount' => (float) $order->total_amount,
             'items_count' => $order->items->count(),
             'can_cancel' => in_array($order->status, [OrderStatus::Pending, OrderStatus::Accepted, OrderStatus::Packed]),
+            'can_return' => $order->status === OrderStatus::Delivered,
             'created_at' => $order->created_at->format('M d, Y'),
             'created_at_full' => $order->created_at->format('M d, Y • g:i A'),
             'vendor' => self::vendor($order->vendor),
@@ -266,14 +280,27 @@ class UserApiFormatter
         ];
 
         if ($detailed || $order->relationLoaded('items')) {
-            $data['items'] = $order->items->map(fn ($item) => [
-                'product_id' => $item->product_id,
-                'product_name' => $item->product_name,
-                'sku' => $item->sku,
-                'quantity' => $item->quantity,
-                'unit_price' => (float) $item->unit_price,
-                'price' => (float) $item->total_price,
-            ])->values();
+            $data['items'] = $order->items->map(function ($item) use ($order) {
+                $returnable = $order->status === OrderStatus::Delivered
+                    ? OrderReturn::returnableQuantity($item)
+                    : 0;
+                $latestReturn = $item->relationLoaded('returns')
+                    ? $item->returns->sortByDesc('created_at')->first()
+                    : null;
+
+                return [
+                    'id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product_name,
+                    'sku' => $item->sku,
+                    'quantity' => $item->quantity,
+                    'unit_price' => (float) $item->unit_price,
+                    'price' => (float) $item->total_price,
+                    'can_return' => $returnable > 0,
+                    'returnable_quantity' => $returnable,
+                    'return' => $latestReturn ? self::orderReturn($latestReturn) : null,
+                ];
+            })->values();
             $data['subtotal'] = (float) $order->subtotal;
             $data['shipping'] = (float) $order->shipping_amount;
             $data['tax'] = (float) $order->tax_amount;
@@ -297,6 +324,40 @@ class UserApiFormatter
                     'created_at' => $log->created_at->format('M d, Y • g:i A'),
                 ])->values()
                 : [];
+        }
+
+        return $data;
+    }
+
+    public static function orderReturn(OrderReturn $return, bool $detailed = false): array
+    {
+        $data = [
+            'id' => $return->id,
+            'return_number' => $return->return_number,
+            'status' => $return->status->value,
+            'quantity' => $return->quantity,
+            'refund_amount' => (float) $return->refund_amount,
+            'reason' => $return->reason,
+            'order_id' => $return->order_id,
+            'order_item_id' => $return->order_item_id,
+            'created_at' => $return->created_at->format('M d, Y • g:i A'),
+        ];
+
+        if ($return->relationLoaded('orderItem') && $return->orderItem) {
+            $data['product_name'] = $return->orderItem->product_name;
+            $data['sku'] = $return->orderItem->sku;
+        }
+
+        if ($return->relationLoaded('order') && $return->order) {
+            $data['order_number'] = $return->order->order_number;
+            $data['vendor'] = $return->order->relationLoaded('vendor')
+                ? self::vendor($return->order->vendor)
+                : null;
+        }
+
+        if ($detailed) {
+            $data['admin_notes'] = $return->admin_notes;
+            $data['reviewed_at'] = $return->reviewed_at?->format('M d, Y • g:i A');
         }
 
         return $data;
@@ -498,6 +559,27 @@ class UserApiFormatter
         }
 
         return $images->values()->all();
+    }
+
+    public static function walletTransaction(WalletTransaction $transaction): array
+    {
+        $isCredit = $transaction->direction === 'credit';
+        $amount = (float) $transaction->amount;
+
+        return [
+            'id' => $transaction->id,
+            'transaction_id' => $transaction->transaction_id,
+            'direction' => $transaction->direction,
+            'category' => $transaction->category->value,
+            'category_label' => $transaction->category->label(),
+            'amount' => $amount,
+            'formatted_amount' => ($isCredit ? '+' : '-').'₹'.number_format($amount, 2),
+            'balance_after' => (float) $transaction->balance_after,
+            'description' => $transaction->description,
+            'metadata' => $transaction->metadata ?? [],
+            'created_at' => $transaction->created_at->format('M d, Y • g:i A'),
+            'created_at_iso' => $transaction->created_at->toIso8601String(),
+        ];
     }
 }
 

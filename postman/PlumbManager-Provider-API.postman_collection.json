@@ -56,6 +56,8 @@
 						{ "key": "mobile", "value": "{{register_mobile}}", "type": "text" },
 						{ "key": "email", "value": "arjun@example.com", "type": "text" },
 						{ "key": "address", "value": "45, service colony, Indore", "type": "text" },
+						{ "key": "latitude", "value": "22.7196", "type": "text" },
+						{ "key": "longitude", "value": "75.8577", "type": "text" },
 						{ "key": "role", "value": "provider", "type": "text" },
 						{ "key": "skills[0]", "value": "Pipe Repair", "type": "text" },
 						{ "key": "skills[1]", "value": "Leak Fixing", "type": "text" },

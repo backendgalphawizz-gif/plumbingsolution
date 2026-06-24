@@ -173,6 +173,7 @@ class VendorApiFormatter
             OrderStatus::Shipped => 'out_for_delivery',
             OrderStatus::Delivered => 'delivered',
             OrderStatus::Cancelled => 'cancelled',
+            OrderStatus::Returned, OrderStatus::Refunded => 'returned',
             default => $status->value,
         };
     }
@@ -186,6 +187,8 @@ class VendorApiFormatter
             OrderStatus::Shipped => 'OUT FOR DELIVERY',
             OrderStatus::Delivered => 'DELIVERED',
             OrderStatus::Cancelled => 'CANCELLED',
+            OrderStatus::Returned => 'RETURNED',
+            OrderStatus::Refunded => 'REFUNDED',
             default => strtoupper($status->value),
         };
     }
@@ -193,6 +196,7 @@ class VendorApiFormatter
     public static function order(Order $order, bool $detailed = false): array
     {
         $primaryItem = $order->items->first();
+        $customer = self::orderCustomer($order);
 
         $data = [
             'id' => $order->id,
@@ -201,7 +205,12 @@ class VendorApiFormatter
             'status_label' => self::orderStatusLabel($order->status),
             'status_raw' => $order->status->value,
             'total_amount' => (float) $order->total_amount,
-            'customer_name' => $order->relationLoaded('user') ? $order->user->name : null,
+            'customer_name' => $customer['name'] ?? null,
+            'customer_mobile' => $customer['mobile'] ?? null,
+            'customer_image' => $customer['image'] ?? null,
+            'customer' => $customer,
+            'address_type' => $order->shipping_address_label,
+            'shipping_address' => $order->shipping_address,
             'created_at' => $order->created_at->format('M d, Y'),
             'created_at_full' => $order->created_at->format('M d, Y | g:i A'),
             'can_accept' => $order->status === OrderStatus::Pending,
@@ -238,7 +247,6 @@ class VendorApiFormatter
             $data['tax'] = (float) $order->tax_amount;
             $data['shipping'] = (float) $order->shipping_amount;
             $data['discount'] = (float) $order->discount_amount;
-            $data['shipping_address'] = $order->shipping_address;
             $data['payment'] = $order->relationLoaded('payment') && $order->payment ? [
                 'payment_id' => $order->payment->payment_id,
                 'method' => self::paymentMethodLabel($order->payment->method),
@@ -248,6 +256,24 @@ class VendorApiFormatter
         }
 
         return $data;
+    }
+
+    private static function orderCustomer(Order $order): ?array
+    {
+        if (! $order->relationLoaded('user') || ! $order->user) {
+            return null;
+        }
+
+        $user = $order->user;
+        $image = $user->avatar ? asset('storage/'.$user->avatar) : null;
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'mobile' => $user->mobile,
+            'image' => $image,
+            'avatar' => $image,
+        ];
     }
 
     public static function earningsSummary(Vendor $vendor, float $totalEarnings, float $walletAmount): array

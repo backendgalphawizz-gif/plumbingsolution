@@ -13,7 +13,7 @@ class Order extends Model
     protected $fillable = [
         'order_number', 'user_id', 'vendor_id', 'status', 'subtotal', 'tax_amount',
         'shipping_amount', 'discount_amount', 'total_amount', 'shipping_address',
-        'billing_address', 'notes', 'cancelled_at', 'cancellation_reason',
+        'shipping_address_label', 'billing_address', 'notes', 'cancelled_at', 'cancellation_reason',
         'tracking_number', 'courier_name', 'invoice_path',
     ];
 
@@ -53,5 +53,10 @@ class Order extends Model
     public function payment(): MorphOne
     {
         return $this->morphOne(Payment::class, 'payable')->latest();
+    }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(OrderReturn::class);
     }
 }
