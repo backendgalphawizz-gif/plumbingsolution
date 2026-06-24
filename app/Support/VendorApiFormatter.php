@@ -7,6 +7,7 @@ use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Enums\WithdrawalStatus;
 use App\Models\Order;
+use App\Models\OrderReturn;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductReview;
@@ -232,8 +233,12 @@ class VendorApiFormatter
                 $image = $item->relationLoaded('product') && $item->product
                     ? optional($item->product->images->first())->image_path
                     : null;
+                $latestReturn = $item->relationLoaded('returns')
+                    ? $item->returns->sortByDesc('created_at')->first()
+                    : null;
 
                 return [
+                    'id' => $item->id,
                     'product_id' => $item->product_id,
                     'product_name' => $item->product_name,
                     'sku' => $item->sku,
@@ -241,6 +246,7 @@ class VendorApiFormatter
                     'unit_price' => (float) $item->unit_price,
                     'price' => (float) $item->total_price,
                     'image' => $image ? asset('storage/'.$image) : null,
+                    'return' => $latestReturn ? self::orderReturn($latestReturn) : null,
                 ];
             })->values();
             $data['subtotal'] = (float) $order->subtotal;
@@ -253,6 +259,44 @@ class VendorApiFormatter
                 'status' => strtoupper($order->payment->status->value),
                 'amount' => (float) $order->payment->amount,
             ] : null;
+        }
+
+        if ($order->relationLoaded('returns')) {
+            $sortedReturns = $order->returns->sortByDesc('created_at')->values();
+            $data['returns'] = $sortedReturns
+                ->map(fn (OrderReturn $return) => self::orderReturn($return, detailed: $detailed))
+                ->all();
+            $data['returns_count'] = $sortedReturns->count();
+            $data['latest_return'] = $sortedReturns->isNotEmpty()
+                ? self::orderReturn($sortedReturns->first())
+                : null;
+        }
+
+        return $data;
+    }
+
+    public static function orderReturn(OrderReturn $return, bool $detailed = false): array
+    {
+        $data = [
+            'id' => $return->id,
+            'return_number' => $return->return_number,
+            'status' => $return->status->value,
+            'quantity' => $return->quantity,
+            'refund_amount' => (float) $return->refund_amount,
+            'reason' => $return->reason,
+            'order_id' => $return->order_id,
+            'order_item_id' => $return->order_item_id,
+            'created_at' => $return->created_at->format('M d, Y • g:i A'),
+        ];
+
+        if ($return->relationLoaded('orderItem') && $return->orderItem) {
+            $data['product_name'] = $return->orderItem->product_name;
+            $data['sku'] = $return->orderItem->sku;
+        }
+
+        if ($detailed) {
+            $data['admin_notes'] = $return->admin_notes;
+            $data['reviewed_at'] = $return->reviewed_at?->format('M d, Y • g:i A');
         }
 
         return $data;

@@ -459,8 +459,14 @@
 					"url": "{{base_url}}/api/user/service-providers/{{service_provider_id}}/reviews",
 					"description": "Auth required. One review per user per provider." } },
 				{ "name": "Search", "request": { "auth": { "type": "noauth" }, "method": "GET",
-					"url": { "raw": "{{base_url}}/api/user/search?q=pipe", "query": [{ "key": "q", "value": "pipe", "description": "Required" }] },
-					"description": "Unified search — returns products[] and services[]" } }
+					"url": { "raw": "{{base_url}}/api/user/search?q=pipe&type=all&per_page=15", "query": [
+						{ "key": "q", "value": "pipe", "description": "Required (or use search=)" },
+						{ "key": "type", "value": "all", "description": "all|product|service" },
+						{ "key": "per_page", "value": "15" },
+						{ "key": "category_id", "value": "{{category_id}}", "disabled": true },
+						{ "key": "service_category_id", "value": "{{service_category_id}}", "disabled": true }
+					] },
+					"description": "Unified search — returns separate product{} and service{} objects, each with items, total, pagination." } }
 			]
 		},
 		{
