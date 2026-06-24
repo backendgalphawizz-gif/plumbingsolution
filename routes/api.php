@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthOtpController;
+use App\Http\Controllers\Api\V1\AuthRegisterController;
 use App\Http\Controllers\Api\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Api\Admin\BannerController as AdminBannerController;
 use App\Http\Controllers\Api\Admin\BulkOrderController;
@@ -60,8 +61,9 @@ use App\Http\Controllers\Api\Vendor\ProfileController as VendorProfileController
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('user')->group(function () {
+    Route::post('auth/send-otp', [UserAuthController::class, 'sendOtp']);
+    Route::post('auth/verify-otp', [UserAuthController::class, 'verifyOtp']);
     Route::post('auth/login', [UserAuthController::class, 'login']);
-    Route::post('auth/register', [UserAuthController::class, 'register']);
 
     Route::get('home', [HomeController::class, 'index']);
     Route::get('banners', [BannerController::class, 'index']);
@@ -141,7 +143,7 @@ Route::prefix('v1')->group(function () {
     Route::post('auth/send-otp', [AuthOtpController::class, 'sendOtp']);
     Route::post('auth/verify-otp', [AuthOtpController::class, 'verifyOtp']);
     Route::post('auth/login', [ProviderAuthController::class, 'login']);
-    Route::post('auth/register', [ProviderAuthController::class, 'register']);
+    Route::post('auth/register', [AuthRegisterController::class, 'register']);
 
     Route::middleware(['auth:sanctum', 'provider.auth'])->group(function () {
         Route::post('auth/logout', [ProviderAuthController::class, 'logout']);
@@ -215,7 +217,7 @@ Route::prefix('v2')->group(function () {
         Route::post('products/{product}', [VendorProductController::class, 'update']);
         Route::delete('products/{product}', [VendorProductController::class, 'destroy']);
 
-        Route::get('lookups/categories', [VendorLookupController::class, 'categories']);
+        Route::get('lookups/categories', [VendorLookupController::class, 'categories']); 
 
         Route::get('profile', [VendorProfileController::class, 'show']);
         Route::post('profile', [VendorProfileController::class, 'update']);

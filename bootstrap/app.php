@@ -27,6 +27,49 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Illuminate\Database\QueryException $e, \Illuminate\Http\Request $request) {
+            $isIntegrityViolation = (string) $e->getCode() === '23000'
+                || str_contains($e->getMessage(), 'Integrity constraint violation');
+
+            if ($request->is('api/*') || $request->expectsJson()) {
+                if (str_contains($e->getMessage(), 'Data too long')) {
+                    $message = 'One or more fields contain too much text. Please shorten your input.';
+                    if (preg_match("/column '([^']+)'/", $e->getMessage(), $matches)) {
+                        $field = str_replace('_', ' ', $matches[1]);
+                        $message = 'The '.ucfirst($field).' field is too long. Please shorten your input.';
+                    }
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => $message,
+                        'errors' => null,
+                    ], 422);
+                }
+
+                if (str_contains($e->getMessage(), 'Duplicate entry')) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'This value already exists. Please use a different one.',
+                        'errors' => null,
+                    ], 422);
+                }
+
+                if ($isIntegrityViolation) {
+                    $message = 'This action cannot be completed because the record is linked to other data.';
+
+                    if (str_contains($e->getMessage(), 'order_items')) {
+                        $message = 'This product cannot be deleted because it is linked to existing orders. You can deactivate it instead.';
+                    }
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => $message,
+                        'errors' => null,
+                    ], 422);
+                }
+
+                return null;
+            }
+
             if (! $request->is('admin') && ! $request->is('admin/*')) {
                 return null;
             }
@@ -41,6 +84,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 }
             } elseif (str_contains($e->getMessage(), 'Duplicate entry')) {
                 $message = 'This value already exists. Please use a different one.';
+            } elseif ($isIntegrityViolation) {
+                $message = str_contains($e->getMessage(), 'order_items')
+                    ? 'Cannot delete product linked to existing orders. Deactivate it instead.'
+                    : 'This record cannot be deleted because it is linked to other data.';
             }
 
             return redirect()

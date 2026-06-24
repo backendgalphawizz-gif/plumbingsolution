@@ -39,11 +39,20 @@ class OrderController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        $order->update(['status' => $request->status]);
+        $nextStatus = OrderStatus::from($request->status);
+
+        if (! $order->status->canTransitionTo($nextStatus)) {
+            return $this->error(
+                'Order cannot move from '.$order->status->label().' to '.$nextStatus->label().'. Follow the next step in the delivery flow.',
+                422,
+            );
+        }
+
+        $order->update(['status' => $nextStatus]);
 
         OrderStatusLog::create([
             'order_id' => $order->id,
-            'status' => $request->status,
+            'status' => $nextStatus->value,
             'notes' => $request->notes,
             'changed_by' => $request->user()->id,
         ]);
@@ -53,6 +62,10 @@ class OrderController extends Controller
 
     public function cancel(Request $request, Order $order): JsonResponse
     {
+        if (! $order->status->canCancel()) {
+            return $this->error('This order cannot be cancelled in its current status.', 422);
+        }
+
         $request->validate(['reason' => ['required', 'string']]);
 
         $order->update([
@@ -78,6 +91,10 @@ class OrderController extends Controller
             'reason' => ['nullable', 'string'],
         ]);
 
+        if (! $order->status->canTransitionTo(OrderStatus::Refunded)) {
+            return $this->error('Refund is only allowed after the order has been returned.', 422);
+        }
+
         $refund = Refund::create([
             'payment_id' => $request->payment_id,
             'refund_id' => 'REF-'.Str::upper(Str::random(10)),
@@ -86,6 +103,10 @@ class OrderController extends Controller
             'reason' => $request->reason,
             'processed_by' => $request->user()->id,
         ]);
+
+        if (! $order->status->canTransitionTo(OrderStatus::Refunded)) {
+            return $this->error('Refund is only allowed after the order has been returned.', 422);
+        }
 
         $order->update(['status' => OrderStatus::Refunded]);
 

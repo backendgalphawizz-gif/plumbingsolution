@@ -9,13 +9,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\User;
 use App\Services\OtpService;
-use App\Services\ProviderRegistrationService;
 use App\Support\AdminValidation as V;
 use App\Support\ProviderApiFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
@@ -26,7 +23,7 @@ class AuthController extends Controller
     {
         $data = $request->validate([
             'mobile' => V::mobileRules(required: true),
-            'type' => ['required', Rule::in(['login', 'register', 'provider_login', 'provider_register'])],
+            'type' => ['required', Rule::in(['login', 'register'])],
         ]);
 
         $type = $this->resolveOtpType($data['type']);
@@ -55,7 +52,7 @@ class AuthController extends Controller
         $data = $request->validate(array_merge([
             'mobile' => V::mobileRules(required: true),
             'otp' => ['required', 'digits:4'],
-            'type' => ['required', Rule::in(['login', 'register', 'provider_login', 'provider_register'])],
+            'type' => ['required', Rule::in(['login', 'register'])],
         ], $this->fcmTokenRules()));
 
         $type = $this->resolveOtpType($data['type']);
@@ -83,49 +80,6 @@ class AuthController extends Controller
         }
 
         return $this->loginResponse($data['mobile'], $data['fcm_token'] ?? null);
-    }
-
-    public function register(Request $request, OtpService $otp, ProviderRegistrationService $providerRegistration): JsonResponse
-    {
-        if (! $otp->isVerified($request->input('mobile', ''), OtpType::ProviderRegister)) {
-            return $this->error('Please verify your mobile number with OTP first.', 422);
-        }
-
-        $providerRegistration->normalizeSkills($request);
-
-        $data = $request->validate(array_merge([
-            'name' => V::nameRules(),
-            'mobile' => array_merge(V::mobileRules(required: true), ['unique:users,mobile']),
-            'email' => V::emailRules(required: false, uniqueTable: 'users'),
-            'address' => ['required', 'string', V::maxRule('address')],
-        ], $providerRegistration->rules(), $this->fcmTokenRules()));
-
-        if (User::where('mobile', $data['mobile'])->exists()) {
-            return $this->error('Mobile number is already registered.', 422);
-        }
-
-        $user = User::create([
-            'name' => $data['name'],
-            'mobile' => $data['mobile'],
-            'email' => $data['email'] ?? null,
-            'address' => $data['address'],
-            'role' => UserRole::Provider,
-            'password' => Hash::make(Str::random(32)),
-        ]);
-
-        $provider = $providerRegistration->createForUser($user, $data, $request);
-        $user->setRelation('serviceProvider', $provider);
-
-        $otp->consumeVerification($data['mobile'], OtpType::ProviderRegister);
-
-        $this->saveFcmToken($user, $data['fcm_token'] ?? null);
-
-        $token = $user->createToken('provider-app', ['provider'])->plainTextToken;
-
-        return $this->success([
-            'user' => ProviderApiFormatter::user($user),
-            'token' => $token,
-        ], 'Registration successful. Your provider profile is pending admin approval.', 201);
     }
 
     public function logout(Request $request): JsonResponse
@@ -168,8 +122,8 @@ class AuthController extends Controller
     private function resolveOtpType(string $type): OtpType
     {
         return match ($type) {
-            'login', 'provider_login' => OtpType::ProviderLogin,
-            'register', 'provider_register' => OtpType::ProviderRegister,
+            'login' => OtpType::ProviderLogin,
+            'register' => OtpType::ProviderRegister,
         };
     }
 }

@@ -76,11 +76,17 @@ class OrderController extends Controller
             'notes' => V::notesRules(),
         ]);
 
-        $order->update(['status' => $request->status]);
+        $nextStatus = OrderStatus::from($request->status);
+
+        if (! $order->status->canTransitionTo($nextStatus)) {
+            return back()->with('error', 'Order cannot move from '.$order->status->label().' to '.$nextStatus->label().'. Follow the next step in the delivery flow.');
+        }
+
+        $order->update(['status' => $nextStatus]);
 
         OrderStatusLog::create([
             'order_id' => $order->id,
-            'status' => $request->status,
+            'status' => $nextStatus->value,
             'notes' => $request->notes,
             'changed_by' => auth('admin')->id(),
         ]);
@@ -88,7 +94,7 @@ class OrderController extends Controller
         $order->load(['user', 'vendor.user']);
         app(PushNotificationService::class)->orderStatusUpdated(
             $order,
-            str_replace('_', ' ', $request->status),
+            str_replace('_', ' ', $nextStatus->value),
             $request->notes,
         );
 
@@ -97,6 +103,10 @@ class OrderController extends Controller
 
     public function cancel(Request $request, Order $order): RedirectResponse
     {
+        if (! $order->status->canCancel()) {
+            return back()->with('error', 'This order cannot be cancelled in its current status.');
+        }
+
         $request->validate(['reason' => V::reasonRules()]);
 
         $order->update([

@@ -24,30 +24,28 @@ class AuthOtpController extends Controller
     {
         $data = $request->validate([
             'mobile' => V::mobileRules(required: true),
-            'type' => ['required', Rule::in(['login', 'register', 'provider_login', 'provider_register'])],
-            'app' => ['sometimes', Rule::in(['user', 'provider'])],
+            'type' => ['required', Rule::in(['login', 'register'])],
         ]);
 
-        $type = $this->resolveOtpType($data);
         $user = User::where('mobile', $data['mobile'])->first();
 
-        if ($type->isLogin()) {
-            if ($this->isProviderFlow($data)) {
-                if (! $user || $user->role !== UserRole::Provider) {
-                    return $this->error('Mobile number is not registered.', 422);
-                }
-            } elseif (! $user) {
+        if ($data['type'] === 'login') {
+            if (! $user) {
                 return $this->error('Mobile number is not registered.', 422);
             }
 
-            if ($user?->is_blocked) {
+            if ($user->role === UserRole::Vendor) {
+                return $this->error('Please use the vendor app to login.', 422);
+            }
+
+            if ($user->is_blocked) {
                 return $this->error('Your account has been blocked.', 403, ['reason' => $user->block_reason]);
             }
         } elseif ($user) {
             return $this->error('Mobile number is already registered.', 422);
         }
 
-        $code = $otp->send($data['mobile'], $type);
+        $code = $otp->send($data['mobile'], $this->resolveOtpType($data['type'], $user));
 
         return $this->success(['otp' => $code], 'OTP sent successfully.');
     }
@@ -57,61 +55,45 @@ class AuthOtpController extends Controller
         $data = $request->validate(array_merge([
             'mobile' => V::mobileRules(required: true),
             'otp' => ['required', 'digits:4'],
-            'type' => ['required', Rule::in(['login', 'register', 'provider_login', 'provider_register'])],
-            'app' => ['sometimes', Rule::in(['user', 'provider'])],
+            'type' => ['required', Rule::in(['login', 'register'])],
         ], $this->fcmTokenRules()));
 
-        $type = $this->resolveOtpType($data);
+        $user = User::where('mobile', $data['mobile'])->first();
+        $type = $this->resolveOtpType($data['type'], $user);
+
+        if ($data['type'] === 'login' && ! $user) {
+            return $this->error('Mobile number is not registered.', 422);
+        }
 
         if (! $otp->verify($data['mobile'], (string) $data['otp'], $type)) {
             return $this->error('Invalid or expired OTP.', 422);
         }
 
         if ($type->isLogin()) {
-            return $this->isProviderFlow($data)
-                ? $this->providerLoginResponse($data['mobile'], $data['fcm_token'] ?? null)
-                : $this->userLoginResponse($data['mobile'], $data['fcm_token'] ?? null);
+            return $user->role === UserRole::Provider
+                ? $this->providerLoginResponse($user, $data['fcm_token'] ?? null)
+                : $this->userLoginResponse($user, $data['fcm_token'] ?? null);
         }
 
         return $this->success(['verified' => true], 'OTP verified. Please complete registration.');
     }
 
-    private function isProviderFlow(array $data): bool
+    private function resolveOtpType(string $type, ?User $user): OtpType
     {
-        if (in_array($data['type'], ['provider_login', 'provider_register'], true)) {
-            return true;
+        if ($type === 'register') {
+            return OtpType::Register;
         }
 
-        return ($data['app'] ?? 'user') === 'provider';
+        return $user?->role === UserRole::Provider ? OtpType::ProviderLogin : OtpType::Login;
     }
 
-    private function resolveOtpType(array $data): OtpType
+    private function userLoginResponse(User $user, ?string $fcmToken = null): JsonResponse
     {
-        if ($this->isProviderFlow($data)) {
-            return match ($data['type']) {
-                'login', 'provider_login' => OtpType::ProviderLogin,
-                'register', 'provider_register' => OtpType::ProviderRegister,
-            };
-        }
-
-        return OtpType::from($data['type']);
-    }
-
-    private function userLoginResponse(string $mobile, ?string $fcmToken = null): JsonResponse
-    {
-        $user = User::with('serviceProvider')->where('mobile', $mobile)->first();
-
-        if (! $user) {
-            return $this->success([
-                'registered' => false,
-                'needs_registration' => true,
-            ], 'OTP verified. Please complete registration.');
-        }
-
         if ($user->is_blocked) {
             return $this->error('Your account has been blocked.', 403, ['reason' => $user->block_reason]);
         }
 
+        $user->load('serviceProvider');
         $this->saveFcmToken($user, $fcmToken);
 
         $token = $user->createToken('user-app', ['user'])->plainTextToken;
@@ -123,14 +105,11 @@ class AuthOtpController extends Controller
         ], 'Login successful.');
     }
 
-    private function providerLoginResponse(string $mobile, ?string $fcmToken = null): JsonResponse
+    private function providerLoginResponse(User $user, ?string $fcmToken = null): JsonResponse
     {
-        $user = User::with('serviceProvider')
-            ->where('mobile', $mobile)
-            ->where('role', UserRole::Provider)
-            ->first();
+        $user->load('serviceProvider');
 
-        if (! $user || ! $user->serviceProvider) {
+        if (! $user->serviceProvider) {
             return $this->success([
                 'registered' => false,
                 'needs_registration' => true,

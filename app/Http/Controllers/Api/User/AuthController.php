@@ -3,19 +3,15 @@
 namespace App\Http\Controllers\Api\User;
 
 use App\Enums\OtpType;
-use App\Enums\UserRole;
 use App\Http\Controllers\Api\Concerns\RegistersFcmToken;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\User;
 use App\Services\OtpService;
-use App\Services\ProviderRegistrationService;
 use App\Support\AdminValidation as V;
 use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
@@ -97,35 +93,6 @@ class AuthController extends Controller
         return $this->loginResponse($data['mobile'], $data['fcm_token'] ?? null);
     }
 
-    public function register(Request $request, OtpService $otp, ProviderRegistrationService $providerRegistration): JsonResponse
-    {
-        if (! $otp->isVerified($request->input('mobile', ''), OtpType::Register)) {
-            return $this->error('Please verify your mobile number with OTP first.', 422);
-        }
-
-        $rules = [
-            'name' => V::nameRules(),
-            'mobile' => array_merge(V::mobileRules(required: true), ['unique:users,mobile']),
-            'email' => V::emailRules(required: false, uniqueTable: 'users'),
-            'address' => V::addressRules(),
-            'role' => ['required', Rule::enum(UserRole::class)],
-        ];
-
-        if ($providerRegistration->isProviderRole($request->input('role'))) {
-            $providerRegistration->normalizeSkills($request);
-            $rules['address'] = ['required', 'string', V::maxRule('address')];
-            $rules = array_merge($rules, $providerRegistration->rules());
-        }
-
-        $data = $request->validate(array_merge($rules, $this->fcmTokenRules()));
-
-        $response = $this->registerResponse($data, $request, $providerRegistration, $data['fcm_token'] ?? null);
-
-        $otp->consumeVerification($data['mobile'], OtpType::Register);
-
-        return $response;
-    }
-
     public function logout(Request $request): JsonResponse
     {
         $this->clearFcmToken($request->user());
@@ -158,39 +125,5 @@ class AuthController extends Controller
             'user' => UserApiFormatter::user($user),
             'token' => $token,
         ], 'Login successful.');
-    }
-
-    private function registerResponse(array $data, Request $request, ProviderRegistrationService $providerRegistration, ?string $fcmToken = null): JsonResponse
-    {
-        if (User::where('mobile', $data['mobile'])->exists()) {
-            return $this->error('Mobile number is already registered.', 422);
-        }
-
-        $user = User::create([
-            'name' => $data['name'],
-            'mobile' => $data['mobile'],
-            'email' => $data['email'] ?? null,
-            'address' => $data['address'] ?? null,
-            'role' => $data['role'],
-            'password' => Hash::make(Str::random(32)),
-        ]);
-
-        if ($providerRegistration->isProviderRole($data['role'])) {
-            $provider = $providerRegistration->createForUser($user, $data, $request);
-            $user->setRelation('serviceProvider', $provider);
-        }
-
-        $this->saveFcmToken($user, $fcmToken);
-
-        $token = $user->createToken('user-app', ['user'])->plainTextToken;
-
-        $message = $providerRegistration->isProviderRole($data['role'])
-            ? 'Registration successful. Your provider profile is pending admin approval.'
-            : 'Registration successful.';
-
-        return $this->success([
-            'user' => UserApiFormatter::user($user),
-            'token' => $token,
-        ], $message, 201);
     }
 }

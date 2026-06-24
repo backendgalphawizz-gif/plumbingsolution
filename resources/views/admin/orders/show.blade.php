@@ -153,20 +153,19 @@
             </div>
         @endif
 
-        <form action="{{ route('admin.orders.update-status', $order) }}" method="POST" class="form-card">@csrf @method('PUT')
+        <form action="{{ route('admin.orders.update-status', $order) }}" method="POST" class="form-card" data-status-update-guard>@csrf @method('PUT')
             <div class="form-section-title">Update Status</div>
             <div class="space-y-3">
-                <select name="status" class="admin-input">
-                    @foreach(['pending','accepted','packed','shipped','delivered','cancelled','returned','refunded'] as $s)
-                        <option value="{{ $s }}" @selected($order->status->value==$s)>{{ ucfirst($s) }}</option>
-                    @endforeach
-                </select>
+                @include('admin.partials.status-update-select', [
+                    'current' => $order->status,
+                    'statuses' => \App\Enums\OrderStatus::cases(),
+                ])
                 <textarea name="notes" placeholder="Notes for status history (optional)" maxlength="{{ config('admin.limits.notes') }}" class="admin-input" rows="2"></textarea>
             </div>
             <button class="btn btn-primary w-full mt-4">Update Status</button>
         </form>
 
-        @if(!in_array($order->status->value, ['cancelled','refunded']))
+        @if($order->status->canCancel())
             <form action="{{ route('admin.orders.cancel', $order) }}" method="POST" class="form-card">
                 @csrf
                 <div class="form-section-title text-red-600">Cancel Order</div>

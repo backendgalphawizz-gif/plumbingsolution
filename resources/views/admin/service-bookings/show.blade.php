@@ -144,13 +144,13 @@
             <button class="btn btn-primary w-full">Assign Provider</button>
         </form>
 
-        <form action="{{ route('admin.service-bookings.update-status', $serviceBooking) }}" method="POST" class="form-card">@csrf @method('PUT')
+        <form action="{{ route('admin.service-bookings.update-status', $serviceBooking) }}" method="POST" class="form-card" data-status-update-guard>@csrf @method('PUT')
             <div class="form-section-title">Update Status</div>
-            <select name="status" class="admin-input mb-3">
-                @foreach(['pending','assigned','accepted','started','completed','cancelled'] as $s)
-                    <option value="{{ $s }}" @selected($serviceBooking->status->value==$s)>{{ ucfirst($s) }}</option>
-                @endforeach
-            </select>
+            @include('admin.partials.status-update-select', [
+                'current' => $serviceBooking->status,
+                'statuses' => \App\Enums\BookingStatus::cases(),
+                'selectExtraClass' => 'mb-3',
+            ])
             <textarea name="notes" placeholder="Notes for status history (optional)" maxlength="{{ config('admin.limits.notes') }}" class="admin-input mb-4" rows="2"></textarea>
             <button class="btn btn-secondary w-full">Update Status</button>
         </form>

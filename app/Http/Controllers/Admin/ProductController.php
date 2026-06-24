@@ -111,6 +111,10 @@ class ProductController extends Controller
 
     public function destroy(Product $product): RedirectResponse
     {
+        if ($product->orderItems()->exists()) {
+            return back()->with('error', 'Cannot delete product linked to existing orders. Deactivate it instead.');
+        }
+
         foreach ($product->images as $image) {
             \Storage::disk('public')->delete($image->image_path);
         }
