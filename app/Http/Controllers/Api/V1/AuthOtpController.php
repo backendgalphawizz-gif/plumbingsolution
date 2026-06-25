@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\OtpType;
+use App\Enums\ProviderStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Api\Concerns\RegistersFcmToken;
 use App\Http\Controllers\Controller;
@@ -40,6 +41,10 @@ class AuthOtpController extends Controller
 
             if ($user->is_blocked) {
                 return $this->error('Your account has been blocked.', 403, ['reason' => $user->block_reason]);
+            }
+
+            if ($user->role === UserRole::Provider && ($response = $this->ensureProviderCanLogin($user))) {
+                return $response;
             }
         } elseif ($user) {
             return $this->error('Mobile number is already registered.', 422);
@@ -120,6 +125,10 @@ class AuthOtpController extends Controller
             return $this->error('Your account has been blocked.', 403, ['reason' => $user->block_reason]);
         }
 
+        if ($response = $this->ensureProviderCanLogin($user)) {
+            return $response;
+        }
+
         $this->saveFcmToken($user, $fcmToken);
 
         $token = $user->createToken('provider-app', ['provider'])->plainTextToken;
@@ -129,5 +138,26 @@ class AuthOtpController extends Controller
             'user' => ProviderApiFormatter::user($user),
             'token' => $token,
         ], 'Login successful.');
+    }
+
+    private function ensureProviderCanLogin(User $user): ?JsonResponse
+    {
+        $user->loadMissing('serviceProvider');
+
+        if (! $user->serviceProvider) {
+            return null;
+        }
+
+        if ($user->serviceProvider->status === ProviderStatus::Approved) {
+            return null;
+        }
+
+        return match ($user->serviceProvider->status) {
+            ProviderStatus::Rejected => $this->error('Your provider account was rejected.', 403, [
+                'reason' => $user->serviceProvider->rejection_reason,
+            ]),
+            ProviderStatus::Suspended => $this->error('Your provider account has been suspended.', 403),
+            default => $this->error('Your provider account is pending admin approval.', 403),
+        };
     }
 }

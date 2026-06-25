@@ -28,6 +28,7 @@ class CategoryController extends Controller
                     'id' => $s->id,
                     'name' => $s->name,
                     'slug' => $s->slug,
+                    'image' => $s->image ? asset('storage/'.$s->image) : null,
                 ]),
             ]);
 
