@@ -57,7 +57,7 @@ class ProductController extends Controller
         $request->validate(['search' => V::searchRules()]);
 
         return $this->applyDateRange(
-            Product::with(['category', 'subcategory', 'vendor'])
+            Product::with(['category', 'subcategory', 'vendor', 'images'])
                 ->when($request->search, fn ($q, $s) => $q->where(function ($q) use ($s) {
                     $q->where('product_name', 'like', "%{$s}%")->orWhere('sku', 'like', "%{$s}%");
                 }))
@@ -87,6 +87,13 @@ class ProductController extends Controller
         $this->syncImages($request, $product);
 
         return redirect()->route('admin.products.index')->with('success', 'Product created.');
+    }
+
+    public function show(Product $product): View
+    {
+        $product->load(['category', 'subcategory', 'vendor', 'images']);
+
+        return view('admin.products.show', compact('product'));
     }
 
     public function edit(Product $product): View

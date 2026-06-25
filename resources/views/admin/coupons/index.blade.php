@@ -134,7 +134,7 @@
             <h3 class="modal-title">Add {{ $title }}</h3>
             <form action="{{ $storeRoute }}" method="POST" class="space-y-4">
                 @csrf
-                @include('admin.coupons.partials.coupon-fields')
+                @include('admin.coupons.partials.coupon-fields', ['coupon' => null])
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" @click="openCoupon = null" class="btn btn-secondary btn-sm">Cancel</button>
                     <button type="submit" class="btn btn-primary btn-sm">Create</button>

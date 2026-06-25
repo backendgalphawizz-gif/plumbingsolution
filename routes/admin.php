@@ -43,7 +43,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('subcategories/{subcategory}', [CategoryController::class, 'destroySubcategory'])->name('subcategories.destroy');
 
         Route::get('products/export', [ProductController::class, 'export'])->name('products.export');
-        Route::resource('products', ProductController::class)->except(['show']);
+        Route::resource('products', ProductController::class);
 
         Route::get('vendors/export', [VendorController::class, 'export'])->name('vendors.export');
         Route::get('vendors/create', [VendorController::class, 'create'])->name('vendors.create');
@@ -68,8 +68,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('service-providers/{serviceProvider}/suspend', [ServiceProviderController::class, 'suspend'])->name('service-providers.suspend');
 
         Route::get('services/export', [ServiceController::class, 'export'])->name('services.export');
+        Route::get('services/create', [ServiceController::class, 'create'])->name('services.create');
+        Route::post('services', [ServiceController::class, 'store'])->name('services.store');
         Route::get('services', [ServiceController::class, 'index'])->name('services.index');
         Route::get('services/{service}', [ServiceController::class, 'show'])->name('services.show');
+        Route::get('services/{service}/edit', [ServiceController::class, 'edit'])->name('services.edit');
+        Route::put('services/{service}', [ServiceController::class, 'update'])->name('services.update');
         Route::delete('services/{service}', [ServiceController::class, 'destroy'])->name('services.destroy');
 
         Route::get('customers/export', [CustomerController::class, 'export'])->name('customers.export');

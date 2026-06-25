@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Enums\OrderReturnStatus;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Enums\WalletTransactionCategory;
 use App\Models\Admin;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderReturn;
 use App\Models\OrderStatusLog;
+use App\Models\Refund;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -58,7 +60,7 @@ class OrderReturnService
                 'reviewed_at' => now(),
             ]);
 
-            $return->load(['user', 'orderItem', 'order']);
+            $return->load(['user', 'orderItem', 'order.payment', 'order.vendor.user']);
             $walletTransaction = null;
             if ($return->user && (float) $return->refund_amount > 0) {
                 $walletTransaction = $this->wallet->credit(
@@ -75,6 +77,8 @@ class OrderReturnService
                     ],
                 );
             }
+
+            $this->processFinancialAdjustments($return, $admin);
 
             $item = $return->orderItem()->with('product')->first();
             if ($item?->product) {
@@ -98,6 +102,73 @@ class OrderReturnService
 
             return $return;
         });
+    }
+
+    private function processFinancialAdjustments(OrderReturn $return, ?Admin $admin): void
+    {
+        $refundAmount = (float) $return->refund_amount;
+        if ($refundAmount <= 0) {
+            return;
+        }
+
+        $order = $return->order;
+        if (! $order) {
+            return;
+        }
+
+        $payment = $order->payment;
+        if ($payment) {
+            Refund::create([
+                'payment_id' => $payment->id,
+                'refund_id' => 'RF-'.strtoupper(Str::random(10)),
+                'amount' => $refundAmount,
+                'status' => 'processed',
+                'reason' => "Return {$return->return_number} approved",
+                'processed_by' => $admin?->id,
+                'processed_at' => now(),
+            ]);
+
+            $remaining = max(0, round((float) $payment->amount - $refundAmount, 2));
+            $payment->update([
+                'amount' => $remaining,
+                'status' => $remaining <= 0 ? PaymentStatus::Refunded : $payment->status,
+            ]);
+        }
+
+        $order->update([
+            'total_amount' => max(0, round((float) $order->total_amount - $refundAmount, 2)),
+        ]);
+
+        $vendorUser = $order->vendor?->user;
+        if ($vendorUser) {
+            $deducted = $this->wallet->debit(
+                $vendorUser,
+                $refundAmount,
+                WalletTransactionCategory::OrderReturnDeduction,
+                "Return deduction for {$return->return_number}",
+                $return,
+                [
+                    'return_number' => $return->return_number,
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                ],
+            );
+
+            if (! $deducted) {
+                $this->wallet->forceDebit(
+                    $vendorUser,
+                    $refundAmount,
+                    WalletTransactionCategory::OrderReturnDeduction,
+                    "Return deduction for {$return->return_number}",
+                    $return,
+                    [
+                        'return_number' => $return->return_number,
+                        'order_id' => $order->id,
+                        'order_number' => $order->order_number,
+                    ],
+                );
+            }
+        }
     }
 
     public function reject(OrderReturn $return, string $reason, ?Admin $admin = null): OrderReturn

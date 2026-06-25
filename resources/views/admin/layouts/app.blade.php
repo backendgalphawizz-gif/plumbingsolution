@@ -164,7 +164,20 @@
             const to = form.querySelector('.admin-date-to');
             if (!from || !to) return;
 
+            const today = new Date().toISOString().slice(0, 10);
+
             const sync = () => {
+                from.max = today;
+                to.max = today;
+
+                if (from.value && from.value > today) {
+                    from.value = today;
+                }
+
+                if (to.value && to.value > today) {
+                    to.value = today;
+                }
+
                 if (from.value) {
                     to.min = from.value;
                     if (to.value && to.value < from.value) {
@@ -176,6 +189,7 @@
             };
 
             from.addEventListener('change', sync);
+            to.addEventListener('change', sync);
             sync();
         });
 
@@ -226,6 +240,85 @@
                 closeSidebar();
             }
         });
+
+        const bindNumericInput = (input) => {
+            if (input.dataset.numericBound === '1') {
+                return;
+            }
+            input.dataset.numericBound = '1';
+
+            const isDecimal = input.type === 'number' && (input.step === 'any' || (input.step && parseFloat(input.step) < 1));
+            const isTel = input.type === 'tel' || input.getAttribute('inputmode') === 'numeric';
+
+            input.addEventListener('keydown', (event) => {
+                const allowed = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+                if (allowed.includes(event.key) || (event.ctrlKey || event.metaKey)) {
+                    return;
+                }
+                if (isDecimal && event.key === '.' && !input.value.includes('.')) {
+                    return;
+                }
+                if (isTel && /^[0-9]$/.test(event.key)) {
+                    return;
+                }
+                if (input.type === 'number' && !isDecimal && /^[0-9]$/.test(event.key)) {
+                    return;
+                }
+                if (isDecimal && /^[0-9]$/.test(event.key)) {
+                    return;
+                }
+                event.preventDefault();
+            });
+
+            input.addEventListener('paste', (event) => {
+                const text = (event.clipboardData || window.clipboardData).getData('text');
+                const pattern = isTel || (input.type === 'number' && !isDecimal)
+                    ? /^[0-9]+$/
+                    : /^[0-9]*\.?[0-9]*$/;
+                if (!pattern.test(text)) {
+                    event.preventDefault();
+                }
+            });
+        };
+
+        document.querySelectorAll('input[type="number"], input[type="tel"], input[inputmode="numeric"], .admin-input-numeric').forEach(bindNumericInput);
+
+        const bindPasswordToggle = (button) => {
+            if (button.dataset.passwordToggleBound === '1') {
+                return;
+            }
+            button.dataset.passwordToggleBound = '1';
+
+            button.addEventListener('click', () => {
+                const input = document.getElementById(button.dataset.target);
+                if (!input) {
+                    return;
+                }
+
+                const show = input.type === 'password';
+                input.type = show ? 'text' : 'password';
+                button.querySelector('.icon-eye')?.classList.toggle('hidden', show);
+                button.querySelector('.icon-eye-off')?.classList.toggle('hidden', !show);
+                button.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+            });
+        };
+
+        document.querySelectorAll('.admin-password-toggle, .auth-password-toggle').forEach(bindPasswordToggle);
+
+        new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType !== 1) {
+                        return;
+                    }
+                    if (node.matches?.('input[type="number"], input[type="tel"], input[inputmode="numeric"], .admin-input-numeric')) {
+                        bindNumericInput(node);
+                    }
+                    node.querySelectorAll?.('input[type="number"], input[type="tel"], input[inputmode="numeric"], .admin-input-numeric').forEach(bindNumericInput);
+                    node.querySelectorAll?.('.admin-password-toggle, .auth-password-toggle').forEach(bindPasswordToggle);
+                });
+            });
+        }).observe(document.body, { childList: true, subtree: true });
     });
     </script>
 </body>

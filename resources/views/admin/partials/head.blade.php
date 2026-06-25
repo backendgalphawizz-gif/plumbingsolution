@@ -64,6 +64,16 @@ body *::-webkit-scrollbar {
     transition: border-color .15s, box-shadow .15s;
 }
 .admin-input:focus { border-color: var(--brand); outline: none; box-shadow: 0 0 0 3px rgba(60,180,242,.18); }
+.admin-password-wrap { position: relative; }
+.admin-input-password { padding-right: 44px; }
+.admin-password-toggle {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border: none; background: transparent;
+    color: #94a3b8; cursor: pointer; border-radius: 6px;
+}
+.admin-password-toggle:hover { color: #475569; background: #f1f5f9; }
+.admin-password-toggle svg { width: 18px; height: 18px; }
 textarea.admin-input { height: auto; padding: 12px 14px; min-height: 90px; }
 .admin-label { display: block; margin-bottom: 6px; font-size: 0.75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 
@@ -528,7 +538,8 @@ button.action-btn { font-family: inherit; }
 .auth-input-error { border-color: #f87171; box-shadow: 0 0 0 3px rgba(248, 113, 113, .12); }
 .auth-password-wrap { position: relative; }
 .auth-input-password { padding-right: 44px; }
-.auth-password-toggle {
+.auth-password-toggle,
+.admin-password-toggle {
     position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
     display: flex; align-items: center; justify-content: center;
     width: 28px; height: 28px; border: none; background: transparent;

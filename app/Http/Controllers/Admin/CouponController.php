@@ -10,6 +10,7 @@ use App\Support\AdminValidation as V;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -88,7 +89,8 @@ class CouponController extends Controller
     private function store(Request $request, CouponAppliesTo $type): RedirectResponse
     {
         $data = $this->validated($request, $type);
-        $data['code'] = strtoupper($data['code']);
+        $code = trim($data['code'] ?? '');
+        $data['code'] = $code !== '' ? strtoupper($code) : $this->generateUniqueCode($type);
         $data['applies_to'] = $type->value;
         $data['status'] = $request->boolean('status');
         $data['min_order_amount'] = $data['min_order_amount'] ?? 0;
@@ -105,8 +107,10 @@ class CouponController extends Controller
         $this->ensureType($coupon, $type);
 
         $data = $this->validated($request, $type, $coupon);
-        if (isset($data['code'])) {
+        if (isset($data['code']) && $data['code'] !== '') {
             $data['code'] = strtoupper($data['code']);
+        } else {
+            unset($data['code']);
         }
         $data['status'] = $request->boolean('status');
         $data['min_order_amount'] = $data['min_order_amount'] ?? 0;
@@ -138,12 +142,23 @@ class CouponController extends Controller
         }
 
         return $request->validate([
-            'code' => ['required', 'string', 'max:30', $codeRule],
+            'code' => [$coupon ? 'required' : 'nullable', 'string', 'max:30', $codeRule],
             'discount_type' => ['required', 'in:fixed,percent'],
             'discount_value' => ['required', 'numeric', 'min:0.01'],
             'min_order_amount' => ['nullable', 'numeric', 'min:0'],
-            'expires_at' => ['nullable', 'date'],
+            'expires_at' => ['nullable', 'date', 'after_or_equal:today'],
+        ], [
+            'expires_at.after_or_equal' => 'Expiry date cannot be in the past.',
         ]);
+    }
+
+    private function generateUniqueCode(CouponAppliesTo $type): string
+    {
+        do {
+            $code = strtoupper(Str::random(8));
+        } while (Coupon::where('code', $code)->where('applies_to', $type->value)->exists());
+
+        return $code;
     }
 
     private function ensureType(Coupon $coupon, CouponAppliesTo $type): void

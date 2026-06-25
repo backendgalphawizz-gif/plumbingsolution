@@ -107,7 +107,7 @@
             <h3 class="modal-title">Add Category</h3>
             <form action="{{ route('admin.categories.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                 @csrf
-                @include('admin.categories.partials.category-fields')
+                @include('admin.categories.partials.category-fields', ['category' => null])
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" @click="openCategory = null" class="btn btn-secondary btn-sm">Cancel</button>
                     <button type="submit" class="btn btn-primary btn-sm">Create</button>

@@ -90,6 +90,41 @@ class WalletService
         return true;
     }
 
+    public function forceDebit(
+        User $user,
+        float $amount,
+        ?WalletTransactionCategory $category = null,
+        ?string $description = null,
+        ?Model $reference = null,
+        ?array $metadata = null,
+    ): bool {
+        if ($amount <= 0) {
+            return true;
+        }
+
+        $amount = round($amount, 2);
+
+        User::query()
+            ->whereKey($user->id)
+            ->decrement('wallet_balance', $amount);
+
+        $user->refresh();
+
+        if ($category && $description) {
+            $this->record(
+                $user,
+                direction: 'debit',
+                category: $category,
+                amount: $amount,
+                description: $description,
+                reference: $reference,
+                metadata: $metadata,
+            );
+        }
+
+        return true;
+    }
+
     public function refund(
         User $user,
         float $amount,

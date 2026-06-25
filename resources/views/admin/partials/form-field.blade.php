@@ -24,6 +24,17 @@
         $inputAttributes['inputmode'] = 'numeric';
         $inputAttributes['title'] = '10-digit mobile number starting with 6-9';
     }
+    if (in_array($type, ['number', 'tel'], true)) {
+        $class = trim($class.' admin-input-numeric');
+    }
+    if ($type === 'password') {
+        $class = trim($class.' admin-input-password');
+        if ($name === 'current_password') {
+            $inputAttributes['autocomplete'] = $inputAttributes['autocomplete'] ?? 'current-password';
+        } else {
+            $inputAttributes['autocomplete'] = $inputAttributes['autocomplete'] ?? 'new-password';
+        }
+    }
 @endphp
 
 <div class="form-field {{ $hasError ? 'has-error' : '' }}">
@@ -50,6 +61,20 @@
             class="admin-input {{ $class }}"
             @foreach($inputAttributes as $attrKey => $attrVal) {{ $attrKey }}="{{ $attrVal }}" @endforeach
         >{{ $resolvedValue }}</textarea>
+    @elseif($type === 'password')
+        <div class="admin-password-wrap">
+            <input
+                id="{{ $inputId }}"
+                type="password"
+                name="{{ $name }}"
+                @if($required) required @endif
+                @if($maxLength) maxlength="{{ $maxLength }}" @endif
+                @if($placeholder) placeholder="{{ $placeholder }}" @endif
+                class="admin-input {{ $class }}"
+                @foreach($inputAttributes as $attrKey => $attrVal) {{ $attrKey }}="{{ $attrVal }}" @endforeach
+            >
+            @include('admin.partials.password-toggle', ['targetId' => $inputId])
+        </div>
     @else
         <input
             id="{{ $inputId }}"

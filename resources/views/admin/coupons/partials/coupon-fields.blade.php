@@ -1,17 +1,40 @@
 @php
     $coupon = $coupon ?? null;
+    $isEdit = (bool) $coupon;
+    $codeFieldId = 'field-code-'.($coupon?->id ?? 'new');
 @endphp
 
 <div>
-    @include('admin.partials.form-field', [
-        'label' => 'Coupon Code',
-        'name' => 'code',
-        'max' => 30,
-        'value' => old('code', $coupon->code ?? ''),
-        'placeholder' => 'e.g. WELCOME10',
-        'required' => true,
-        'inputAttributes' => ['style' => 'text-transform: uppercase'],
-    ])
+    <div class="form-field-head">
+        <label class="admin-label" for="{{ $codeFieldId }}">
+            Coupon Code
+            @if(! $isEdit)<span class="text-red-500">*</span>@endif
+        </label>
+    </div>
+    <div class="flex gap-2">
+        <input
+            id="{{ $codeFieldId }}"
+            type="text"
+            name="code"
+            value="{{ old('code', $coupon->code ?? '') }}"
+            placeholder="Leave blank to auto-generate"
+            maxlength="30"
+            class="admin-input flex-1"
+            style="text-transform: uppercase"
+            @if($isEdit) required @endif
+        >
+        @if(! $isEdit)
+            <button
+                type="button"
+                class="btn btn-secondary btn-sm shrink-0"
+                data-generate-coupon-code
+            >Generate</button>
+        @endif
+    </div>
+    @if(! $isEdit)
+        <p class="field-hint">Enter a custom code or leave blank and click Generate.</p>
+    @endif
+    @error('code')<p class="field-error">{{ $message }}</p>@enderror
 </div>
 
 <div class="grid grid-cols-2 gap-4">
@@ -52,7 +75,8 @@
             'name' => 'expires_at',
             'type' => 'date',
             'value' => old('expires_at', isset($coupon->expires_at) ? $coupon->expires_at->format('Y-m-d') : ''),
-            'hint' => 'Optional. Leave empty for no expiry.',
+            'hint' => 'Optional. Cannot be a past date.',
+            'inputAttributes' => ['min' => now()->format('Y-m-d'), 'class' => 'admin-input admin-date-expiry'],
         ])
     </div>
 </div>
@@ -63,3 +87,33 @@
         Active
     </label>
 </div>
+
+@once
+    @push('scripts')
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        const randomCode = () => Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+
+        document.querySelectorAll('[data-generate-coupon-code]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const form = button.closest('form');
+                const input = form?.querySelector('input[name="code"]');
+                if (input) {
+                    input.value = randomCode();
+                }
+            });
+        });
+
+        document.querySelectorAll('.admin-date-expiry').forEach((input) => {
+            const min = input.getAttribute('min');
+            input.addEventListener('change', () => {
+                if (min && input.value && input.value < min) {
+                    input.value = min;
+                }
+            });
+        });
+    });
+    </script>
+    @endpush
+@endonce

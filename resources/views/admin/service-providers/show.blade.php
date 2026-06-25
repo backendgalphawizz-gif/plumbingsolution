@@ -45,10 +45,9 @@
             <h3 class="detail-panel-title">Personal Details</h3>
             <dl class="detail-dl">
                 <div><dt class="admin-label">Mobile</dt><dd class="mt-1">{{ $serviceProvider->mobile }}</dd></div>
-                <div><dt class="admin-label">Email</dt><dd class="mt-1">{{ $serviceProvider->user?->email ?? '—' }}</dd></div>
+                <div><dt class="admin-label">Email</dt><dd class="mt-1">{{ $serviceProvider->email ?? $serviceProvider->user?->email ?? '—' }}</dd></div>
                 <div><dt class="admin-label">Experience</dt><dd class="mt-1">{{ $serviceProvider->experience_years }} years</dd></div>
-                <div><dt class="admin-label">Service Area</dt><dd class="mt-1">{{ $serviceProvider->service_area ?? '—' }}</dd></div>
-                <div class="span-full"><dt class="admin-label">Address</dt><dd class="mt-1 text-slate-600">{{ $serviceProvider->address ?? '—' }}</dd></div>
+                <div class="span-full"><dt class="admin-label">Address</dt><dd class="mt-1 text-slate-600">{{ $serviceProvider->service_area ?? '—' }}</dd></div>
                 <div class="span-full"><dt class="admin-label">Skills</dt><dd class="mt-1">{{ implode(', ', $serviceProvider->skills ?? []) ?: '—' }}</dd></div>
             </dl>
         </div>

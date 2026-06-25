@@ -47,15 +47,30 @@
         <thead><tr><th>Product</th><th>Category</th><th>Vendor</th><th>Price</th><th>Stock</th><th>Status</th><th>Created Date</th><th>Actions</th></tr></thead>
         <tbody>
             @forelse($products as $product)
+                @php
+                    $thumb = $product->images->firstWhere('is_primary', true) ?? $product->images->first();
+                @endphp
                 <tr>
-                    <td><div class="user-name cell-truncate" title="{{ $product->product_name }}">{{ $product->product_name }}</div><div class="user-sub">{{ $product->sku }}</div></td>
+                    <td>
+                        <div class="flex items-center gap-3">
+                            @if($thumb)
+                                <img src="{{ asset('storage/'.$thumb->image_path) }}" alt="" class="h-10 w-10 shrink-0 rounded-lg object-cover">
+                            @else
+                                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">—</div>
+                            @endif
+                            <div>
+                                <div class="user-name cell-truncate" title="{{ $product->product_name }}">{{ $product->product_name }}</div>
+                                <div class="user-sub">{{ $product->sku }}</div>
+                            </div>
+                        </div>
+                    </td>
                     <td class="text-sm">{{ $product->category?->name }}@if($product->subcategory)<span class="text-slate-400"> / {{ $product->subcategory->name }}</span>@endif</td>
                     <td class="text-sm">{{ $product->vendor?->shop_name ?? '—' }}</td>
                     <td class="font-semibold">₹{{ number_format($product->price, 2) }}</td>
                     <td>{{ $product->stock }}</td>
                     <td>@include('admin.partials.status-badge', ['status' => $product->status ? 'active' : 'inactive'])</td>
                     <td class="text-sm text-slate-500">{{ $product->created_at->format('M d, Y') }}</td>
-                    <td><div class="action-group"><a href="{{ route('admin.products.edit', $product) }}" class="action-btn">Edit</a>
+                    <td><div class="action-group"><a href="{{ route('admin.products.show', $product) }}" class="action-btn">View</a><a href="{{ route('admin.products.edit', $product) }}" class="action-btn">Edit</a>
                         <form action="{{ route('admin.products.destroy', $product) }}" method="POST" class="inline" onsubmit="return confirm('Delete?')">@csrf @method('DELETE')<button type="submit" class="action-btn danger">Delete</button></form></div></td>
                 </tr>
             @empty

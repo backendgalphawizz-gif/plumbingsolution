@@ -74,7 +74,9 @@ class AuthController extends Controller
     {
         $request->validate([
             'current_password' => ['required', 'string'],
-            'password' => ['required', 'confirmed', PasswordRule::defaults()],
+            'password' => ['required', 'confirmed', 'different:current_password', PasswordRule::defaults()],
+        ], [
+            'password.different' => 'The new password must be different from your current password.',
         ]);
 
         $admin = $request->user();

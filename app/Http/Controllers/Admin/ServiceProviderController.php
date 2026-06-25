@@ -176,6 +176,7 @@ class ServiceProviderController extends Controller
         return [
             'name' => $data['name'],
             'mobile' => $data['mobile'],
+            'email' => isset($data['email']) && $data['email'] !== '' ? $data['email'] : null,
             'skills' => $this->parseSkills($data['skills'] ?? ''),
             'experience_years' => $data['experience_years'],
             'service_area' => $data['address'],
