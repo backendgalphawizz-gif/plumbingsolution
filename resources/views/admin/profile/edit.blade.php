@@ -22,7 +22,7 @@
                 <div class="profile-avatar-actions">
                     <input type="file" name="avatar" id="avatar" accept="image/jpeg,image/jpg,image/png,image/webp" class="profile-avatar-input">
                     <label for="avatar" class="btn btn-secondary btn-sm">Choose Image</label>
-                    <p class="field-hint">JPG, PNG or WebP. Max 2 MB. Shown next to your name in the header.</p>
+                    <p class="field-hint">JPG, PNG or WebP. Max 20 MB. Shown next to your name in the header.</p>
                     @error('avatar')
                         <p class="field-error">{{ $message }}</p>
                     @enderror
