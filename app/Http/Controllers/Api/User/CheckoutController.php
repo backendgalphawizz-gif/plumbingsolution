@@ -16,6 +16,7 @@ use App\Models\Transaction;
 use App\Models\UserAddress;
 use App\Services\CouponService;
 use App\Services\PushNotificationService;
+use App\Services\TaxService;
 use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -77,18 +78,18 @@ class CheckoutController extends Controller
             }
         }
 
-        $total = round(max(0, $subtotal - $discount), 2);
+        $pricing = app(TaxService::class)->calculate($subtotal, $discount);
 
         $order = Order::create([
             'order_number' => 'ORD-'.strtoupper(Str::random(8)),
             'user_id' => $user->id,
             'vendor_id' => $cartItems->first()->product->vendor_id,
             'status' => OrderStatus::Pending,
-            'subtotal' => $subtotal,
-            'tax_amount' => 0,
+            'subtotal' => $pricing['subtotal'],
+            'tax_amount' => $pricing['tax'],
             'shipping_amount' => 0,
-            'discount_amount' => $discount,
-            'total_amount' => $total,
+            'discount_amount' => $pricing['discount'],
+            'total_amount' => $pricing['total'],
             'shipping_address' => $address->full_address ?? implode(', ', array_filter([
                 $address->full_name, $address->house_no, $address->road_area,
                 $address->city, $address->state, $address->pincode,
@@ -128,7 +129,7 @@ class CheckoutController extends Controller
             'payable_id' => $order->id,
             'method' => PaymentMethod::from($data['payment_method']),
             'status' => $paymentStatus,
-            'amount' => $total,
+            'amount' => $pricing['total'],
             'currency' => 'INR',
             'gateway_payment_id' => $data['transaction_id'] ?? null,
         ]);
@@ -138,7 +139,7 @@ class CheckoutController extends Controller
                 'payment_id' => $payment->id,
                 'transaction_id' => $data['transaction_id'],
                 'type' => 'payment',
-                'amount' => $total,
+                'amount' => $pricing['total'],
                 'status' => 'completed',
                 'description' => 'Order payment',
             ]);
@@ -164,7 +165,7 @@ class CheckoutController extends Controller
         if ($data['payment_method'] === 'razorpay' && empty($data['transaction_id'])) {
             $response['razorpay'] = [
                 'order_id' => 'order_'.Str::random(14),
-                'amount' => (int) ($total * 100),
+                'amount' => (int) ($pricing['total'] * 100),
                 'currency' => 'INR',
                 'key' => config('services.razorpay.key', 'rzp_test_placeholder'),
             ];

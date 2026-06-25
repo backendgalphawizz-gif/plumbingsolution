@@ -183,7 +183,7 @@
 						{
 							"name": "C3 Cart Tab",
 							"request": { "method": "GET", "url": "{{base_url}}/api/user/cart",
-								"description": "**Screen:** Cart tab — items, subtotal, discount, total" }
+								"description": "**Screen:** Cart tab — items, subtotal, discount, tax, total" }
 						},
 						{
 							"name": "C4 Apply Coupon",
