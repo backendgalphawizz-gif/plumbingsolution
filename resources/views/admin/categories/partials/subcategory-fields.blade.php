@@ -1,3 +1,7 @@
+@php
+    $subcategory = $subcategory ?? null;
+@endphp
+
 <div>
     @include('admin.partials.form-field', ['label' => 'Name', 'name' => 'name', 'limit' => 'category_name', 'value' => old('name', $subcategory->name ?? ''), 'required' => true])
 </div>

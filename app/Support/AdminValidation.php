@@ -229,16 +229,16 @@ class AdminValidation
     public static function dateRangeRules(): array
     {
         return [
-            'date_from' => ['nullable', 'date'],
-            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'date_from' => ['nullable', 'date', 'before_or_equal:today'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from', 'before_or_equal:today'],
         ];
     }
 
     public static function customDateRangeRules(): array
     {
         return [
-            'start_date' => ['nullable', 'date'],
-            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'start_date' => ['nullable', 'date', 'before_or_equal:today'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date', 'before_or_equal:today'],
         ];
     }
 

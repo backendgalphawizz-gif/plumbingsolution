@@ -142,7 +142,7 @@
                         @endforeach
                     </select>
                 </div>
-                @include('admin.categories.partials.subcategory-fields')
+                @include('admin.categories.partials.subcategory-fields', ['subcategory' => null])
                 <div class="flex justify-end gap-2 pt-2">
                     <button type="button" @click="openSubcategory = null" class="btn btn-secondary btn-sm">Cancel</button>
                     <button type="submit" class="btn btn-primary btn-sm">Create</button>

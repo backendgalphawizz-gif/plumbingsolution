@@ -4,6 +4,11 @@
 @section('page-subtitle', 'Platform and provider-created services')
 
 @section('content')
+<div class="page-toolbar">
+    <div></div>
+    @include('admin.partials.btn-create', ['href' => route('admin.services.create'), 'label' => 'Add Service'])
+</div>
+
 @component('admin.partials.filter-panel')
     <div class="filter-field">
         <label class="admin-label">Search</label>
@@ -83,6 +88,7 @@
                     <td>
                         <div class="action-group">
                             <a href="{{ route('admin.services.show', $service) }}" class="action-btn">View</a>
+                            <a href="{{ route('admin.services.edit', $service) }}" class="action-btn">Edit</a>
                             <form action="{{ route('admin.services.destroy', $service) }}" method="POST" class="inline" onsubmit="return confirm('Delete this service?')">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="action-btn danger">Delete</button>

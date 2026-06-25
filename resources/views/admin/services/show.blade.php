@@ -35,6 +35,7 @@
 
         <div class="mt-6 flex flex-wrap gap-2 border-t border-slate-100 pt-5">
             <a href="{{ route('admin.services.index') }}" class="btn btn-secondary btn-sm">Back to list</a>
+            <a href="{{ route('admin.services.edit', $service) }}" class="btn btn-primary btn-sm">Edit Service</a>
             @if($service->serviceProvider)
                 <a href="{{ route('admin.service-providers.show', $service->serviceProvider) }}" class="btn btn-secondary btn-sm">View Provider</a>
             @endif

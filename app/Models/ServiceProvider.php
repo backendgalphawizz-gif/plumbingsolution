@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ServiceProvider extends Model
 {
     protected $fillable = [
-        'user_id', 'name', 'mobile', 'avatar', 'skills', 'experience_years',
+        'user_id', 'name', 'mobile', 'email', 'avatar', 'skills', 'experience_years',
         'service_area', 'latitude', 'longitude', 'status', 'rejection_reason', 'approved_at',
         'account_number', 'account_holder_name', 'ifsc_code', 'bank_name', 'account_type',
     ];

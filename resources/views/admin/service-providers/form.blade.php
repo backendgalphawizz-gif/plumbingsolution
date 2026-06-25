@@ -26,7 +26,7 @@
                 <div class="sm:col-span-2 form-file-field">
                     <label class="admin-label" for="field-avatar">Profile Photo</label>
                     <input id="field-avatar" type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp" class="admin-input !h-auto !py-2.5">
-                    <p class="field-hint">JPG, PNG or WEBP · max 2 MB</p>
+                    <p class="field-hint">JPG, PNG or WEBP · max 20 MB</p>
                     @error('avatar')<p class="field-error">{{ $message }}</p>@enderror
                 </div>
             </div>
