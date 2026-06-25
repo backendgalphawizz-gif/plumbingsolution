@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Vendor;
 
 use App\Enums\OtpType;
 use App\Enums\UserRole;
+use App\Enums\VendorStatus;
 use App\Http\Controllers\Api\Concerns\RegistersFcmToken;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
@@ -44,6 +45,10 @@ class AuthController extends Controller
 
             if ($user->is_blocked) {
                 return $this->error('Your account has been blocked.', 403, ['reason' => $user->block_reason]);
+            }
+
+            if ($response = $this->ensureVendorCanLogin($user)) {
+                return $response;
             }
         } elseif ($user) {
             return $this->error('Mobile number is already registered.', 422);
@@ -159,6 +164,10 @@ class AuthController extends Controller
             return $this->error('Your account has been blocked.', 403, ['reason' => $user->block_reason]);
         }
 
+        if ($response = $this->ensureVendorCanLogin($user)) {
+            return $response;
+        }
+
         $this->saveFcmToken($user, $fcmToken);
 
         $token = $user->createToken('vendor-app', ['vendor'])->plainTextToken;
@@ -168,5 +177,26 @@ class AuthController extends Controller
             'user' => VendorApiFormatter::user($user),
             'token' => $token,
         ], 'Login successful.');
+    }
+
+    private function ensureVendorCanLogin(User $user): ?JsonResponse
+    {
+        $user->loadMissing('vendor');
+
+        if (! $user->vendor) {
+            return null;
+        }
+
+        if ($user->vendor->status === VendorStatus::Approved) {
+            return null;
+        }
+
+        return match ($user->vendor->status) {
+            VendorStatus::Rejected => $this->error('Your vendor account was rejected.', 403, [
+                'reason' => $user->vendor->rejection_reason,
+            ]),
+            VendorStatus::Suspended => $this->error('Your vendor account has been suspended.', 403),
+            default => $this->error('Your vendor account is pending admin approval.', 403),
+        };
     }
 }

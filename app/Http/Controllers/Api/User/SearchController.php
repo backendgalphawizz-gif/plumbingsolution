@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\User;
 
+use App\Enums\ProviderStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Product;
@@ -18,6 +19,8 @@ class SearchController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $type = $request->get('type', 'all');
+
         $request->validate([
             'q' => V::searchRules(),
             'search' => V::searchRules(),
@@ -26,6 +29,9 @@ class SearchController extends Controller
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'subcategory_id' => ['nullable', 'integer', 'exists:subcategories,id'],
             'service_category_id' => ['nullable', 'integer', 'exists:service_categories,id'],
+            'radius_km' => ['nullable', 'numeric', 'min:1', 'max:50'],
+            'latitude' => [Rule::requiredIf($type === 'service'), 'nullable', 'numeric', 'between:-90,90'],
+            'longitude' => [Rule::requiredIf($type === 'service'), 'nullable', 'numeric', 'between:-180,180'],
         ]);
 
         $query = trim((string) ($request->q ?? $request->search ?? ''));
@@ -34,8 +40,11 @@ class SearchController extends Controller
             return $this->error('Search query is required.', 422);
         }
 
-        $type = $request->get('type', 'all');
         $perPage = $request->integer('per_page', 15);
+        $hasLocation = $request->filled('latitude') && $request->filled('longitude');
+        $latitude = $hasLocation ? (float) $request->latitude : null;
+        $longitude = $hasLocation ? (float) $request->longitude : null;
+        $radiusKm = (float) ($request->radius_km ?? 10);
 
         $product = ['items' => [], 'total' => 0];
         $service = ['items' => [], 'total' => 0];
@@ -70,6 +79,13 @@ class SearchController extends Controller
             $services = Service::where('status', true)
                 ->with('category')
                 ->when($request->service_category_id, fn ($q, $id) => $q->where('service_category_id', $id))
+                ->when($hasLocation, function ($q) use ($latitude, $longitude, $radiusKm) {
+                    $q->whereHas('providers', function ($providerQuery) use ($latitude, $longitude, $radiusKm) {
+                        $providerQuery
+                            ->where('service_providers.status', ProviderStatus::Approved)
+                            ->withinRadius($latitude, $longitude, $radiusKm);
+                    });
+                })
                 ->where(function ($q) use ($query) {
                     $q->where('name', 'like', "%{$query}%")
                         ->orWhere('description', 'like', "%{$query}%");
@@ -88,11 +104,21 @@ class SearchController extends Controller
             ];
         }
 
-        return $this->success([
+        $response = [
             'query' => $query,
             'type' => $type,
             'product' => $product,
             'service' => $service,
-        ]);
+        ];
+
+        if ($hasLocation && in_array($type, ['all', 'service'], true)) {
+            $response['location'] = [
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+                'radius_km' => $radiusKm,
+            ];
+        }
+
+        return $this->success($response);
     }
 }

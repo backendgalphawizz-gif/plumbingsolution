@@ -64,15 +64,28 @@ class ServiceProvider extends Model
         return $this->hasMany(ServiceProviderReview::class)->where('status', true);
     }
 
-    public function scopeNearby(Builder $query, float $latitude, float $longitude, float $radiusKm = 10): Builder
+    public function scopeWithinRadius(Builder $query, float $latitude, float $longitude, float $radiusKm = 10): Builder
     {
-        $haversine = '(6371 * acos(LEAST(1, GREATEST(-1, cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))))';
+        $haversine = self::haversineDistanceSql();
 
         return $query
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
+            ->whereRaw("{$haversine} <= ?", [$latitude, $longitude, $latitude, $radiusKm]);
+    }
+
+    public function scopeNearby(Builder $query, float $latitude, float $longitude, float $radiusKm = 10): Builder
+    {
+        $haversine = self::haversineDistanceSql();
+
+        return $query
+            ->withinRadius($latitude, $longitude, $radiusKm)
             ->selectRaw("service_providers.*, {$haversine} as distance_km", [$latitude, $longitude, $latitude])
-            ->whereRaw("{$haversine} <= ?", [$latitude, $longitude, $latitude, $radiusKm])
             ->orderBy('distance_km');
+    }
+
+    private static function haversineDistanceSql(): string
+    {
+        return '(6371 * acos(LEAST(1, GREATEST(-1, cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))))';
     }
 }

@@ -459,14 +459,17 @@
 					"url": "{{base_url}}/api/user/service-providers/{{service_provider_id}}/reviews",
 					"description": "Auth required. One review per user per provider." } },
 				{ "name": "Search", "request": { "auth": { "type": "noauth" }, "method": "GET",
-					"url": { "raw": "{{base_url}}/api/user/search?q=pipe&type=all&per_page=15", "query": [
+					"url": { "raw": "{{base_url}}/api/user/search?q=pipe&type=service&latitude=22.7196&longitude=75.8577&radius_km=10&per_page=15", "query": [
 						{ "key": "q", "value": "pipe", "description": "Required (or use search=)" },
-						{ "key": "type", "value": "all", "description": "all|product|service" },
+						{ "key": "type", "value": "service", "description": "all|product|service — latitude/longitude required when type=service" },
+						{ "key": "latitude", "value": "22.7196", "description": "Required for type=service; optional for type=all (filters services only)" },
+						{ "key": "longitude", "value": "75.8577" },
+						{ "key": "radius_km", "value": "10", "description": "Default 10 km" },
 						{ "key": "per_page", "value": "15" },
 						{ "key": "category_id", "value": "{{category_id}}", "disabled": true },
 						{ "key": "service_category_id", "value": "{{service_category_id}}", "disabled": true }
 					] },
-					"description": "Unified search — returns separate product{} and service{} objects, each with items, total, pagination." } }
+					"description": "Unified search — product{} and service{}. Services are filtered by nearby approved providers when latitude/longitude are sent." } }
 			]
 		},
 		{
