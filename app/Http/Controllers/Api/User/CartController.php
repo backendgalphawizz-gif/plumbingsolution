@@ -103,7 +103,6 @@ class CartController extends Controller
             ->get();
 
         $subtotal = $items->sum(fn ($item) => (float) ($item->product->sale_price ?? $item->product->price) * $item->quantity);
-        $shipping = $subtotal > 0 ? 5.00 : 0;
         $discount = 0;
         $couponApplied = false;
         $couponMessage = null;
@@ -117,9 +116,7 @@ class CartController extends Controller
             }
         }
 
-        $taxable = max(0, $subtotal - $discount);
-        $tax = round($taxable * 0.08, 2);
-        $total = round($taxable + $shipping + $tax, 2);
+        $total = round(max(0, $subtotal - $discount), 2);
         $firstItem = $items->first();
 
         return [
@@ -127,9 +124,6 @@ class CartController extends Controller
             'items' => $items->map(fn ($i) => UserApiFormatter::cartItem($i)),
             'summary' => [
                 'subtotal' => round($subtotal, 2),
-                'shipping' => $shipping,
-                'tax' => $tax,
-                'tax_percent' => 8,
                 'discount' => $discount,
                 'total' => $total,
             ],

@@ -302,8 +302,6 @@ class UserApiFormatter
                 ];
             })->values();
             $data['subtotal'] = (float) $order->subtotal;
-            $data['shipping'] = (float) $order->shipping_amount;
-            $data['tax'] = (float) $order->tax_amount;
             $data['discount'] = (float) $order->discount_amount;
             $data['shipping_address'] = $order->shipping_address;
             $data['tracking'] = [
