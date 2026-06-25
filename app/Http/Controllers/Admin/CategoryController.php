@@ -223,7 +223,7 @@ class CategoryController extends Controller
         return [
             'name' => ['required', 'string', V::maxRule('category_name'), 'regex:/^[\pL\s\-\'.&0-9]+$/u'],
             'slug' => ['nullable', 'string', V::maxRule('slug'), 'unique:categories,slug,'.($ignoreId ?? 'NULL')],
-            'image' => ['nullable', 'image', 'max:2048'],
+            'image' => V::imageRules(required: false),
             'status' => ['nullable'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
         ];
@@ -234,7 +234,7 @@ class CategoryController extends Controller
         return [
             'name' => ['required', 'string', V::maxRule('category_name'), 'regex:/^[\pL\s\-\'.&0-9]+$/u'],
             'slug' => ['nullable', 'string', V::maxRule('slug')],
-            'image' => ['nullable', 'image', 'max:2048'],
+            'image' => V::imageRules(required: false),
             'status' => ['nullable'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:9999'],
         ];

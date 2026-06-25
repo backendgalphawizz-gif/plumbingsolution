@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -26,6 +27,27 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $imageTooLargeMessage = 'Image is too large. Maximum upload size is '.\App\Support\AdminValidation::imageMaxMb().' MB.';
+
+        $exceptions->render(function (PostTooLargeException $e, \Illuminate\Http\Request $request) use ($imageTooLargeMessage) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $imageTooLargeMessage,
+                    'errors' => null,
+                ], 413);
+            }
+
+            if ($request->is('admin') || $request->is('admin/*')) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error', $imageTooLargeMessage);
+            }
+
+            return null;
+        });
+
         $exceptions->render(function (\Illuminate\Database\QueryException $e, \Illuminate\Http\Request $request) {
             $isIntegrityViolation = (string) $e->getCode() === '23000'
                 || str_contains($e->getMessage(), 'Integrity constraint violation');

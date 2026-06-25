@@ -6,6 +6,7 @@
     <title>@yield('title', 'Admin') - Plumbing Solutions</title>
     @include('admin.partials.head')
     <script>
+    window.adminImageMaxBytes = {{ (int) config('admin.limits.image_kb', 20480) }} * 1024;
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('[data-field-counter]').forEach(counter => {
             const id = counter.dataset.fieldCounter;
@@ -125,6 +126,38 @@
 
             setTimeout(closeFlashToast, 4000);
         }
+
+        document.querySelectorAll('form').forEach((form) => {
+            form.addEventListener('submit', (event) => {
+                const tooLarge = [];
+                form.querySelectorAll('input[type="file"]').forEach((input) => {
+                    Array.from(input.files || []).forEach((file) => {
+                        if (file.size > window.adminImageMaxBytes) {
+                            tooLarge.push(file.name);
+                        }
+                    });
+                });
+
+                if (tooLarge.length > 0) {
+                    event.preventDefault();
+                    const maxMb = Math.round(window.adminImageMaxBytes / (1024 * 1024));
+                    window.showAdminFlashToast('error', 'Image is too large. Maximum upload size is ' + maxMb + ' MB.', 'Upload failed');
+                }
+            });
+        });
+
+        document.querySelectorAll('input[type="file"]').forEach((input) => {
+            input.addEventListener('change', () => {
+                const maxMb = Math.round(window.adminImageMaxBytes / (1024 * 1024));
+                for (const file of input.files || []) {
+                    if (file.size > window.adminImageMaxBytes) {
+                        input.value = '';
+                        window.showAdminFlashToast('error', 'Image is too large. Maximum upload size is ' + maxMb + ' MB.', 'Upload failed');
+                        break;
+                    }
+                }
+            });
+        });
 
         document.querySelectorAll('form').forEach((form) => {
             const from = form.querySelector('.admin-date-from');

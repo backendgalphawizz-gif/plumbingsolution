@@ -9,11 +9,11 @@ return [
     | Used for server validation and HTML maxlength on forms.
     */
     'limits' => [
-        'name' => 60,
+        'name' => 32,
         'shop_name' => 80,
-        'owner_name' => 60,
+        'owner_name' => 32,
         'product_name' => 100,
-        'category_name' => 60,
+        'category_name' => 32,
         'slug' => 80,
         'email' => 255,
         'password' => 255,
@@ -35,6 +35,7 @@ return [
         'faq_question' => 255,
         'faq_answer' => 2000,
         'max_name_words' => 5,
+        'image_kb' => 20480,
     ],
 
 ];

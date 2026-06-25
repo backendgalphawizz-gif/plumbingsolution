@@ -41,7 +41,7 @@ class AdminValidation
         return $required ? array_merge(['required'], $rules) : array_merge(['nullable'], $rules);
     }
 
-    /** @gmail.com or domain ending in .in / .co */
+    /** @gmail.com, @outlook.com, or domain ending in .in / .co */
     public static function emailRules(bool $required = true, ?string $uniqueTable = null, ?int $ignoreId = null): array
     {
         $rules = ['string', 'email', self::maxRule('email'), self::allowedEmailRule()];
@@ -122,16 +122,31 @@ class AdminValidation
         ];
     }
 
-    public static function imageDocRules(bool $required = true): array
+    public static function imageMaxRule(): string
     {
-        $rules = ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'];
+        return 'max:'.self::limit('image_kb');
+    }
+
+    public static function imageMaxMb(): int
+    {
+        return (int) round(self::limit('image_kb') / 1024);
+    }
+
+    public static function imageRules(bool $required = true): array
+    {
+        $rules = ['image', 'mimes:jpg,jpeg,png,webp', self::imageMaxRule()];
 
         return $required ? array_merge(['required'], $rules) : array_merge(['nullable'], $rules);
     }
 
+    public static function imageDocRules(bool $required = true): array
+    {
+        return self::imageRules($required);
+    }
+
     public static function pdfOrImageDocRules(bool $required = true): array
     {
-        $rules = ['file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:5120'];
+        $rules = ['file', 'mimes:pdf,jpg,jpeg,png,webp', self::imageMaxRule()];
 
         return $required ? array_merge(['required'], $rules) : array_merge(['nullable'], $rules);
     }
@@ -242,7 +257,7 @@ class AdminValidation
 
     public static function emailHint(): string
     {
-        return 'Use @gmail.com or a .in / .co domain (e.g. name@gmail.com, name@company.in)';
+        return 'Use @gmail.com, @outlook.com, or a .in / .co domain (e.g. name@gmail.com, name@outlook.com)';
     }
 
     public static function mobileHint(): string
@@ -278,12 +293,12 @@ class AdminValidation
                 return;
             }
 
-            $allowed = $domain === 'gmail.com'
+            $allowed = in_array($domain, ['gmail.com', 'outlook.com'], true)
                 || str_ends_with($domain, '.in')
                 || str_ends_with($domain, '.co');
 
             if (! $allowed) {
-                $fail('Email must be @gmail.com or use a .in or .co domain.');
+                $fail('Email must be @gmail.com, @outlook.com, or use a .in or .co domain.');
             }
         };
     }
