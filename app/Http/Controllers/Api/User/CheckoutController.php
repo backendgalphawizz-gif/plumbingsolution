@@ -68,7 +68,6 @@ class CheckoutController extends Controller
         }
 
         $subtotal = $cartItems->sum(fn ($item) => (float) ($item->product->sale_price ?? $item->product->price) * $item->quantity);
-        $shipping = 5.00;
         $discount = 0;
 
         if (! empty($data['coupon_code'])) {
@@ -78,9 +77,7 @@ class CheckoutController extends Controller
             }
         }
 
-        $taxable = max(0, $subtotal - $discount);
-        $tax = round($taxable * 0.08, 2);
-        $total = round($taxable + $shipping + $tax, 2);
+        $total = round(max(0, $subtotal - $discount), 2);
 
         $order = Order::create([
             'order_number' => 'ORD-'.strtoupper(Str::random(8)),
@@ -88,8 +85,8 @@ class CheckoutController extends Controller
             'vendor_id' => $cartItems->first()->product->vendor_id,
             'status' => OrderStatus::Pending,
             'subtotal' => $subtotal,
-            'tax_amount' => $tax,
-            'shipping_amount' => $shipping,
+            'tax_amount' => 0,
+            'shipping_amount' => 0,
             'discount_amount' => $discount,
             'total_amount' => $total,
             'shipping_address' => $address->full_address ?? implode(', ', array_filter([
