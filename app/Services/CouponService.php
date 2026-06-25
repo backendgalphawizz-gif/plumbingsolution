@@ -110,14 +110,13 @@ class CouponService
             }
         }
 
-        return [
-            'subtotal' => round($subtotal, 2),
-            'discount' => round($discount, 2),
-            'total' => round(max(0, $subtotal - $discount), 2),
+        $pricing = app(TaxService::class)->calculate($subtotal, $discount);
+
+        return array_merge($pricing, [
             'coupon_applied' => $couponApplied,
             'coupon_code' => $resolvedCode,
             'coupon' => $couponData,
-        ];
+        ]);
     }
 
     public function calculateForService(Service $service, ?string $couponCode): array

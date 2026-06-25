@@ -19,6 +19,7 @@ class AppConfigBuilder
     public static function userConfig(): array
     {
         return self::build('user', [
+            'tax_percent' => app(\App\Services\TaxService::class)->percent(),
             'payment' => [
                 'razorpay_enabled' => (bool) Setting::getValue('payment', 'razorpay_enabled', true),
                 'cod_enabled' => (bool) Setting::getValue('payment', 'cod_enabled', true),

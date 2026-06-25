@@ -8,6 +8,7 @@ use App\Enums\CouponAppliesTo;
 use App\Models\CartItem;
 use App\Models\Product;
 use App\Services\CouponService;
+use App\Services\TaxService;
 use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -116,17 +117,13 @@ class CartController extends Controller
             }
         }
 
-        $total = round(max(0, $subtotal - $discount), 2);
+        $pricing = app(TaxService::class)->calculate($subtotal, $discount);
         $firstItem = $items->first();
 
         return [
             'vendor' => $firstItem ? UserApiFormatter::vendor($firstItem->product->vendor) : null,
             'items' => $items->map(fn ($i) => UserApiFormatter::cartItem($i)),
-            'summary' => [
-                'subtotal' => round($subtotal, 2),
-                'discount' => $discount,
-                'total' => $total,
-            ],
+            'summary' => $pricing,
             'coupon_applied' => $couponApplied,
             'coupon_code' => $couponMessage,
             'items_count' => $items->sum('quantity'),

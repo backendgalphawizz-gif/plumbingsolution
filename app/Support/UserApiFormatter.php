@@ -302,6 +302,8 @@ class UserApiFormatter
                 ];
             })->values();
             $data['subtotal'] = (float) $order->subtotal;
+            $data['tax'] = (float) $order->tax_amount;
+            $data['tax_percent'] = app(\App\Services\TaxService::class)->percent();
             $data['discount'] = (float) $order->discount_amount;
             $data['shipping_address'] = $order->shipping_address;
             $data['tracking'] = [
@@ -389,6 +391,11 @@ class UserApiFormatter
             'cancellation_reason' => $booking->cancellation_reason,
             'subtotal' => (float) ($booking->subtotal ?? $booking->amount),
             'discount' => (float) ($booking->discount_amount ?? 0),
+            'tax' => round(
+                (float) $booking->amount - max(0, (float) ($booking->subtotal ?? $booking->amount) - (float) ($booking->discount_amount ?? 0)),
+                2
+            ),
+            'tax_percent' => app(\App\Services\TaxService::class)->percent(),
             'promo_code' => $booking->coupon_code,
             'amount' => (float) $booking->amount,
             'address' => $booking->address,
