@@ -25,7 +25,7 @@ class ProfileController extends Controller
             'name' => V::nameRules(),
             'mobile' => V::mobileRules(),
             'role_title' => ['nullable', 'string', V::maxRule('role_title')],
-            'avatar' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
+            'avatar' => V::imageRules(required: false),
         ]);
 
         if ($request->hasFile('avatar')) {

@@ -137,7 +137,7 @@ class ProductController extends Controller
             'stock' => ['required', 'integer', 'min:0', 'max:999999'],
             'sku' => ['required', 'string', V::maxRule('sku'), 'unique:products,sku,'.($product?->id ?? 'NULL')],
             'status' => ['nullable'],
-            'images.*' => ['nullable', 'image', 'max:2048'],
+            'images.*' => V::imageRules(required: false),
         ]);
 
         return [

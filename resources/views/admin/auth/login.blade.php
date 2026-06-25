@@ -60,7 +60,7 @@
                                 required
                                 maxlength="{{ config('admin.limits.email') }}"
                                 class="auth-input @error('email') auth-input-error @enderror"
-                                placeholder="admin@gmail.com"
+                                placeholder="name@gmail.com or name@outlook.com"
                                 autocomplete="username"
                             >
                         </div>

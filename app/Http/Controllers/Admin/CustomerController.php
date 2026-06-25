@@ -84,7 +84,7 @@ class CustomerController extends Controller
             'email' => V::emailRules(required: false, uniqueTable: 'users'),
             'password' => V::passwordRules(),
             'address' => V::addressRules(),
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'avatar' => V::imageRules(required: false),
         ]);
 
         $payload = collect($data)->except(['avatar', 'password'])->filter(fn ($v) => $v !== null && $v !== '')->toArray();
@@ -117,7 +117,7 @@ class CustomerController extends Controller
             'email' => V::emailRules(required: false, uniqueTable: 'users', ignoreId: $customer->id),
             'password' => V::passwordRules(required: false),
             'address' => V::addressRules(),
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'avatar' => V::imageRules(required: false),
         ]);
 
         $update = collect($data)->except(['password', 'avatar'])->toArray();
