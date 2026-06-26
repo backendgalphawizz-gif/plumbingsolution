@@ -7,6 +7,7 @@
     @include('admin.partials.head')
     <script>
     window.adminImageMaxBytes = {{ (int) config('admin.limits.image_kb', 20480) }} * 1024;
+    window.adminLaunchDate = @json(config('admin.launch_date'));
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('[data-field-counter]').forEach(counter => {
             const id = counter.dataset.fieldCounter;
@@ -40,6 +41,7 @@
     </div>
 
     @include('admin.partials.flash-toast')
+    @include('admin.partials.date-filter-scripts')
     @stack('scripts')
     <script>
     window.showAdminFlashToast = function(type, message, title) {
@@ -157,40 +159,6 @@
                     }
                 }
             });
-        });
-
-        document.querySelectorAll('form').forEach((form) => {
-            const from = form.querySelector('.admin-date-from');
-            const to = form.querySelector('.admin-date-to');
-            if (!from || !to) return;
-
-            const today = new Date().toISOString().slice(0, 10);
-
-            const sync = () => {
-                from.max = today;
-                to.max = today;
-
-                if (from.value && from.value > today) {
-                    from.value = today;
-                }
-
-                if (to.value && to.value > today) {
-                    to.value = today;
-                }
-
-                if (from.value) {
-                    to.min = from.value;
-                    if (to.value && to.value < from.value) {
-                        to.value = from.value;
-                    }
-                } else {
-                    to.removeAttribute('min');
-                }
-            };
-
-            from.addEventListener('change', sync);
-            to.addEventListener('change', sync);
-            sync();
         });
 
         const sidebar = document.getElementById('admin-sidebar');

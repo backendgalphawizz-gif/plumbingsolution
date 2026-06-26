@@ -12,6 +12,7 @@ use App\Services\TaxService;
 use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
@@ -36,24 +37,37 @@ class CartController extends Controller
             return $this->error('Insufficient stock.', 422);
         }
 
-        $existingVendorId = $request->user()->cartItems()
+        $user = $request->user();
+
+        $existingVendorId = $user->cartItems()
             ->with('product')
             ->first()?->product?->vendor_id;
 
-        if ($existingVendorId && $existingVendorId !== $product->vendor_id) {
-            return $this->error('Cart can only contain products from a single vendor. Please remove existing items first.', 422);
-        }
+        $vendorSwitched = $existingVendorId && $existingVendorId !== $product->vendor_id;
 
-        CartItem::updateOrCreate(
-            [
-                'user_id' => $request->user()->id,
-                'product_id' => $product->id,
-                'product_variant_id' => $data['product_variant_id'] ?? null,
-            ],
-            ['quantity' => $data['quantity']]
-        );
+        DB::transaction(function () use ($user, $product, $data, $vendorSwitched) {
+            if ($vendorSwitched) {
+                $user->cartItems()->delete();
+            }
 
-        return $this->success($this->buildCartResponse($request), 'Item added to cart.', 201);
+            CartItem::updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'product_id' => $product->id,
+                    'product_variant_id' => $data['product_variant_id'] ?? null,
+                ],
+                ['quantity' => $data['quantity']]
+            );
+        });
+
+        $message = $vendorSwitched
+            ? 'Previous vendor items removed. Item added to cart.'
+            : 'Item added to cart.';
+
+        $response = $this->buildCartResponse($request);
+        $response['vendor_switched'] = $vendorSwitched;
+
+        return $this->success($response, $message, 201);
     }
 
     public function update(Request $request, CartItem $cartItem): JsonResponse

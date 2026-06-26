@@ -76,7 +76,11 @@
             'type' => 'date',
             'value' => old('expires_at', isset($coupon->expires_at) ? $coupon->expires_at->format('Y-m-d') : ''),
             'hint' => 'Optional. Cannot be a past date.',
-            'inputAttributes' => ['min' => now()->format('Y-m-d'), 'class' => 'admin-input admin-date-expiry'],
+            'inputAttributes' => [
+                'min' => now()->format('Y-m-d'),
+                'data-date-min' => now()->format('Y-m-d'),
+                'class' => 'admin-input admin-date-expiry',
+            ],
         ])
     </div>
 </div>
@@ -101,15 +105,6 @@
                 const input = form?.querySelector('input[name="code"]');
                 if (input) {
                     input.value = randomCode();
-                }
-            });
-        });
-
-        document.querySelectorAll('.admin-date-expiry').forEach((input) => {
-            const min = input.getAttribute('min');
-            input.addEventListener('change', () => {
-                if (min && input.value && input.value < min) {
-                    input.value = min;
                 }
             });
         });

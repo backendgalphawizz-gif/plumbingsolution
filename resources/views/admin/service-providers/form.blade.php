@@ -53,8 +53,8 @@
             <h3 class="form-subsection-title">Bank Details</h3>
             <div class="grid gap-5 sm:grid-cols-2">
                 <div class="sm:col-span-2">@include('admin.partials.form-field', ['label' => 'Account Holder Name', 'name' => 'account_holder_name', 'value' => old('account_holder_name', $serviceProvider->account_holder_name), 'required' => $creating])</div>
-                <div>@include('admin.partials.form-field', ['label' => 'Account Number', 'name' => 'account_number', 'value' => old('account_number', $serviceProvider->account_number), 'required' => $creating, 'inputAttributes' => ['inputmode' => 'numeric']])</div>
-                <div>@include('admin.partials.form-field', ['label' => 'IFSC Code', 'name' => 'ifsc_code', 'value' => old('ifsc_code', $serviceProvider->ifsc_code), 'required' => $creating, 'placeholder' => 'SBIN0001234', 'inputAttributes' => ['pattern' => '[A-Za-z]{4}0[A-Za-z0-9]{6}', 'title' => 'Valid 11-character IFSC code']])</div>
+                <div>@include('admin.partials.form-field', ['label' => 'Account Number', 'name' => 'account_number', 'value' => old('account_number', $serviceProvider->account_number), 'required' => $creating, 'hint' => \App\Support\AdminValidation::accountNumberHint(), 'inputAttributes' => ['inputmode' => 'numeric', 'pattern' => '[0-9]{9,18}', 'maxlength' => '18', 'data-bank-field' => 'account']])</div>
+                <div>@include('admin.partials.form-field', ['label' => 'IFSC Code', 'name' => 'ifsc_code', 'value' => old('ifsc_code', $serviceProvider->ifsc_code), 'required' => $creating, 'placeholder' => 'SBIN0001234', 'hint' => \App\Support\AdminValidation::ifscHint(), 'inputAttributes' => ['pattern' => '[A-Za-z]{4}0[A-Za-z0-9]{6}', 'maxlength' => '11', 'data-bank-field' => 'ifsc', 'style' => 'text-transform: uppercase']])</div>
                 <div>@include('admin.partials.form-field', ['label' => 'Bank Name', 'name' => 'bank_name', 'value' => old('bank_name', $serviceProvider->bank_name), 'required' => $creating])</div>
                 <div>
                     <label class="admin-label">Account Type @if($creating)<span class="text-red-500">*</span>@endif</label>
@@ -102,4 +102,5 @@
         </div>
     </form>
 </div>
+@include('admin.partials.bank-field-scripts')
 @endsection

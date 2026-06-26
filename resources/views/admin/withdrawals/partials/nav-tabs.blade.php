@@ -9,7 +9,7 @@
         Provider
         @if(($counts['provider'] ?? 0) > 0)<span class="count">{{ $counts['provider'] }}</span>@endif
     </a>
-    <a href="{{ route('admin.withdrawals.index', ['type' => 'user']) }}" class="stat-tab {{ $active === 'user' ? 'active' : '' }}">
+    <a href="{{ route('admin.withdrawals.index', ['type' => 'user']) }}" class="stat-tab hidden {{ $active === 'user' ? 'active' : '' }}">
         User
         @if(($counts['user'] ?? 0) > 0)<span class="count">{{ $counts['user'] }}</span>@endif
     </a>

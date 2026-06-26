@@ -39,6 +39,13 @@
     <div class="detail-panel text-center"><p class="text-sm font-semibold">{{ $vendor->approved_at?->format('M d, Y') ?? '—' }}</p><p class="text-xs font-semibold uppercase text-slate-500">Approved On</p></div>
 </div>
 
+@if($vendor->status->value === 'rejected' && $vendor->rejection_reason)
+    <div class="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4">
+        <p class="text-xs font-bold uppercase tracking-wide text-red-700">Rejection Reason</p>
+        <p class="mt-2 text-sm leading-relaxed text-red-900 break-words whitespace-pre-wrap">{{ $vendor->rejection_reason }}</p>
+    </div>
+@endif
+
 <div class="grid gap-6 lg:grid-cols-3">
     <div class="space-y-6 lg:col-span-2">
         <div class="detail-panel">
@@ -110,12 +117,6 @@
         @empty
             <p class="text-sm text-slate-400">No documents uploaded.</p>
         @endforelse
-
-        @if($vendor->status->value === 'rejected' && $vendor->rejection_reason)
-            <div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                <strong>Rejection reason:</strong> {{ $vendor->rejection_reason }}
-            </div>
-        @endif
     </div>
 </div>
 @endsection

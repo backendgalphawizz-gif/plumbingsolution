@@ -168,7 +168,7 @@ class VendorController extends Controller
             'shop_logo' => V::imageDocRules($creating),
             'aadhar_card' => V::imageDocRules($creating),
             'pan_card' => V::imageDocRules($creating),
-        ], V::locationRules($creating), V::bankRules($creating)));
+        ], V::locationRules($creating), V::bankRules($creating)), V::bankValidationMessages());
     }
 
     private function vendorAttributes(array $data): array
