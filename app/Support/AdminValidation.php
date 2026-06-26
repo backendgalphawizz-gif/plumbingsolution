@@ -103,7 +103,7 @@ class AdminValidation
 
         return [
             'account_holder_name' => [$prefix, 'string', 'max:100'],
-            'account_number' => [$prefix, 'string', 'max:30'],
+            'account_number' => [$prefix, 'string', 'regex:/^[0-9]{9,18}$/'],
             'ifsc_code' => [$prefix, 'string', 'max:11', 'regex:/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/'],
             'bank_name' => [$prefix, 'string', 'max:100'],
             'account_type' => [$prefix, Rule::in(['savings', 'current', 'saving', 'Saving', 'Savings', 'Current'])],
@@ -226,18 +226,27 @@ class AdminValidation
         return ['nullable', 'string', self::maxRule('search')];
     }
 
+    public static function launchDate(): string
+    {
+        return (string) config('admin.launch_date', '2026-06-01');
+    }
+
     public static function dateRangeRules(): array
     {
+        $launch = self::launchDate();
+
         return [
-            'date_from' => ['nullable', 'date', 'before_or_equal:today'],
+            'date_from' => ['nullable', 'date', 'after_or_equal:'.$launch, 'before_or_equal:today'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from', 'before_or_equal:today'],
         ];
     }
 
     public static function customDateRangeRules(): array
     {
+        $launch = self::launchDate();
+
         return [
-            'start_date' => ['nullable', 'date', 'before_or_equal:today'],
+            'start_date' => ['nullable', 'date', 'after_or_equal:'.$launch, 'before_or_equal:today'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date', 'before_or_equal:today'],
         ];
     }
@@ -263,6 +272,24 @@ class AdminValidation
     public static function mobileHint(): string
     {
         return 'Exactly 10 digits, starting with 6–9';
+    }
+
+    public static function accountNumberHint(): string
+    {
+        return 'Digits only · 9 to 18 characters';
+    }
+
+    public static function ifscHint(): string
+    {
+        return '11-character IFSC (e.g. SBIN0001234)';
+    }
+
+    public static function bankValidationMessages(): array
+    {
+        return [
+            'account_number.regex' => 'Account number must contain 9 to 18 digits only.',
+            'ifsc_code.regex' => 'Enter a valid 11-character IFSC code (e.g. SBIN0001234).',
+        ];
     }
 
     private static function mobileFormatRule(): \Closure

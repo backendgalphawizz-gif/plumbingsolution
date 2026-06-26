@@ -38,4 +38,12 @@ return [
         'image_kb' => 20480,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Application launch date (admin date filters)
+    |--------------------------------------------------------------------------
+    | Earliest date selectable in admin date-range filters.
+    */
+    'launch_date' => env('ADMIN_LAUNCH_DATE', '2026-06-01'),
+
 ];

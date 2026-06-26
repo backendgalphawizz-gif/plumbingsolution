@@ -39,6 +39,13 @@
     <div class="detail-panel text-center"><p class="text-sm font-semibold">{{ $serviceProvider->approved_at?->format('M d, Y') ?? '—' }}</p><p class="text-xs font-semibold uppercase text-slate-500">Approved On</p></div>
 </div>
 
+@if($serviceProvider->status->value === 'rejected' && $serviceProvider->rejection_reason)
+    <div class="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4">
+        <p class="text-xs font-bold uppercase tracking-wide text-red-700">Rejection Reason</p>
+        <p class="mt-2 text-sm leading-relaxed text-red-900 break-words whitespace-pre-wrap">{{ $serviceProvider->rejection_reason }}</p>
+    </div>
+@endif
+
 <div class="grid gap-6 lg:grid-cols-3">
     <div class="space-y-6 lg:col-span-2">
         <div class="detail-panel">
@@ -106,13 +113,6 @@
                         <span class="text-xs">View</span>
                     </a>
                 @endforeach
-            </div>
-        @endif
-
-        @if($serviceProvider->status->value === 'rejected' && $serviceProvider->rejection_reason)
-            <div class="detail-panel border-red-200 bg-red-50/50">
-                <h3 class="detail-panel-title text-red-700">Rejection</h3>
-                <p class="text-sm text-red-800">{{ $serviceProvider->rejection_reason }}</p>
             </div>
         @endif
     </div>

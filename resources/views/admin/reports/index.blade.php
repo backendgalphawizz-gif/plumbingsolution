@@ -25,11 +25,40 @@
     @endforeach
 </div>
 
-@if($filter==='custom')
+@if($filter === 'custom')
     @component('admin.partials.filter-panel')
-@php($today = now()->format('Y-m-d'))
-        <div class="filter-field"><label class="admin-label">Start Date</label><input type="date" name="start_date" value="{{ request('start_date', $start->format('Y-m-d')) }}" max="{{ $today }}" class="admin-input admin-date-from">@error('start_date')<p class="field-error">{{ $message }}</p>@enderror</div>
-        <div class="filter-field"><label class="admin-label">End Date</label><input type="date" name="end_date" value="{{ request('end_date', $end->format('Y-m-d')) }}" max="{{ $today }}" class="admin-input admin-date-to" min="{{ request('start_date', $start->format('Y-m-d')) }}">@error('end_date')<p class="field-error">{{ $message }}</p>@enderror</div>
+        @php
+            $launchDate = config('admin.launch_date');
+            $today = now()->format('Y-m-d');
+        @endphp
+        <div class="filter-field">
+            <label class="admin-label">Start Date</label>
+            <input
+                type="date"
+                name="start_date"
+                value="{{ request('start_date', $start->format('Y-m-d')) }}"
+                min="{{ $launchDate }}"
+                max="{{ $today }}"
+                data-date-min="{{ $launchDate }}"
+                data-date-max="{{ $today }}"
+                class="admin-input admin-date-from"
+            >
+            @error('start_date')<p class="field-error">{{ $message }}</p>@enderror
+        </div>
+        <div class="filter-field">
+            <label class="admin-label">End Date</label>
+            <input
+                type="date"
+                name="end_date"
+                value="{{ request('end_date', $end->format('Y-m-d')) }}"
+                min="{{ request('start_date', $launchDate) }}"
+                max="{{ $today }}"
+                data-date-min="{{ $launchDate }}"
+                data-date-max="{{ $today }}"
+                class="admin-input admin-date-to"
+            >
+            @error('end_date')<p class="field-error">{{ $message }}</p>@enderror
+        </div>
         <input type="hidden" name="filter" value="custom">
     @endcomponent
 @endif

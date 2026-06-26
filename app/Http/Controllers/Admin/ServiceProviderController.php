@@ -168,7 +168,7 @@ class ServiceProviderController extends Controller
             'pan_card' => V::imageDocRules($creating),
         ], V::bankRules($creating));
 
-        return $request->validate($rules);
+        return $request->validate($rules, V::bankValidationMessages());
     }
 
     private function providerAttributes(array $data): array
