@@ -18,12 +18,12 @@ class VendorRegistrationService
         return [
             'name' => V::nameRules(),
             'mobile' => array_merge(V::mobileRules(required: true), ['unique:users,mobile']),
-            'email' => V::emailRules(required: false, uniqueTable: 'users'),
+            'email' => V::registrationEmailRules(uniqueTable: 'users'),
             'aadhar_card' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'shop_name' => ['required', 'string', V::maxRule('shop_name')],
             'business_mobile' => V::mobileRules(required: false),
-            'shop_email' => V::emailRules(required: false),
-            'gst_number' => ['nullable', 'string', V::maxRule('gst_number')],
+            'shop_email' => V::registrationEmailRules(uniqueTable: null),
+            'gst_number' => V::registrationGstRules(),
             'address' => ['required', 'string', V::maxRule('address')],
             'country' => ['required', 'string', 'max:100'],
             'state' => ['required', 'string', 'max:100'],
@@ -56,7 +56,9 @@ class VendorRegistrationService
                 'state' => $data['state'],
                 'city' => $data['city'],
                 'pincode' => $data['pincode'],
-                'gst_number' => $data['gst_number'] ?? null,
+                'gst_number' => isset($data['gst_number']) && $data['gst_number'] !== ''
+                    ? strtoupper($data['gst_number'])
+                    : null,
                 'shop_logo' => $request->file('shop_logo')->store('vendors/logos', 'public'),
                 'status' => VendorStatus::Pending,
                 'account_number' => $data['account_number'],
