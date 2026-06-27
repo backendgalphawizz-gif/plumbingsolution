@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Service;
 use App\Models\ServiceCategory;
+use App\Services\ProviderRegistrationService;
 use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,6 +20,14 @@ class HomeController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $request->validate(array_merge([
+            'radius_km' => ['nullable', 'numeric', 'min:1', 'max:50'],
+        ], app(ProviderRegistrationService::class)->locationRules()));
+
+        $latitude = (float) $request->latitude;
+        $longitude = (float) $request->longitude;
+        $radiusKm = (float) ($request->radius_km ?? 10);
+
         $banners = Banner::where('status', true)->orderBy('sort_order')->get()
             ->map(fn ($b) => UserApiFormatter::banner($b));
 
@@ -36,8 +45,12 @@ class HomeController extends Controller
                 'type' => 'product',
             ]);
 
+        $nearbyServiceQuery = fn ($q) => $q->where('status', true)
+            ->withNearbyProvider($latitude, $longitude, $radiusKm);
+
         $serviceCategories = ServiceCategory::where('status', true)
-            ->withCount(['services' => fn ($q) => $q->where('status', true)])
+            ->withCount(['services' => $nearbyServiceQuery])
+            ->having('services_count', '>', 0)
             ->orderBy('sort_order')
             ->limit(10)
             ->get()
@@ -51,6 +64,7 @@ class HomeController extends Controller
             ]);
 
         $featuredServices = Service::where('status', true)
+            ->withNearbyProvider($latitude, $longitude, $radiusKm)
             ->with('category')
             ->orderBy('sort_order')
             ->limit(6)
@@ -65,7 +79,11 @@ class HomeController extends Controller
             ->map(fn ($p) => UserApiFormatter::product($p));
 
         return $this->success([
-            'location' => $request->get('location', 'Indore, India'),
+            'location' => [
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+                'radius_km' => $radiusKm,
+            ],
             'banners' => $banners,
             'promo_cards' => [
                 [
