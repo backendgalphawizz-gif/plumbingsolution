@@ -83,7 +83,7 @@ class ServiceProviderController extends Controller
 
         $provider = ServiceProvider::create($this->providerAttributes($data));
 
-        $this->syncLinkedUserEmail($provider, $data['email'] ?? null);
+        $this->syncLinkedUser($provider, $data);
         $this->storeImages($request, $provider);
         $this->storeDocuments($request, $provider, creating: true);
 
@@ -99,6 +99,8 @@ class ServiceProviderController extends Controller
 
     public function update(Request $request, ServiceProvider $serviceProvider): RedirectResponse
     {
+        $this->removeOrphanDuplicateProviders($serviceProvider, trim((string) $request->input('mobile', $serviceProvider->mobile)));
+
         $data = $this->validated($request, $serviceProvider);
 
         $serviceProvider->update([
@@ -108,7 +110,7 @@ class ServiceProviderController extends Controller
                 : null,
         ]);
 
-        $this->syncLinkedUserEmail($serviceProvider, $data['email'] ?? null);
+        $this->syncLinkedUser($serviceProvider, $data);
         $this->storeImages($request, $serviceProvider);
         $this->storeDocuments($request, $serviceProvider, creating: false);
 
@@ -152,9 +154,7 @@ class ServiceProviderController extends Controller
 
         $rules = array_merge([
             'name' => V::nameRules(),
-            'mobile' => array_merge(V::mobileRules(required: true), [
-                Rule::unique('service_providers', 'mobile')->ignore($provider?->id),
-            ]),
+            'mobile' => $this->mobileRules($provider),
             'email' => V::emailRules(required: false),
             'address' => V::requiredAddressRules(),
             'skills' => V::skillsStringRules($creating),
@@ -168,7 +168,37 @@ class ServiceProviderController extends Controller
             'pan_card' => V::imageDocRules($creating),
         ], V::bankRules($creating));
 
-        return $request->validate($rules, V::bankValidationMessages());
+        return $request->validate($rules, array_merge(V::bankValidationMessages(), [
+            'mobile.unique' => 'This mobile is already registered. Edit the existing provider profile instead of creating a duplicate.',
+        ]));
+    }
+
+    private function mobileRules(?ServiceProvider $provider = null): array
+    {
+        $rules = V::mobileRules(required: true);
+
+        $rules[] = Rule::unique('service_providers', 'mobile')->ignore($provider?->id);
+
+        $userUnique = Rule::unique('users', 'mobile');
+        if ($provider?->user_id) {
+            $userUnique->ignore($provider->user_id);
+        }
+        $rules[] = $userUnique;
+
+        return $rules;
+    }
+
+    private function removeOrphanDuplicateProviders(ServiceProvider $provider, string $mobile): void
+    {
+        if (! $provider->user_id || $mobile === '') {
+            return;
+        }
+
+        ServiceProvider::query()
+            ->where('mobile', $mobile)
+            ->whereNull('user_id')
+            ->whereKeyNot($provider->id)
+            ->delete();
     }
 
     private function providerAttributes(array $data): array
@@ -195,15 +225,24 @@ class ServiceProviderController extends Controller
         return array_values(array_filter(array_map('trim', explode(',', $skills))));
     }
 
-    private function syncLinkedUserEmail(ServiceProvider $provider, ?string $email): void
+    private function syncLinkedUser(ServiceProvider $provider, array $data): void
     {
-        if (! $provider->user_id || ! $provider->relationLoaded('user')) {
-            $provider->load('user');
+        if (! $provider->user_id) {
+            return;
         }
 
-        if ($provider->user && $email !== null) {
-            $provider->user->update(['email' => $email !== '' ? $email : null]);
+        $provider->loadMissing('user');
+
+        if (! $provider->user) {
+            return;
         }
+
+        $provider->user->update([
+            'name' => $data['name'],
+            'mobile' => $data['mobile'],
+            'email' => isset($data['email']) && $data['email'] !== '' ? $data['email'] : null,
+            'address' => $data['address'],
+        ]);
     }
 
     private function storeDocuments(Request $request, ServiceProvider $provider, bool $creating): void

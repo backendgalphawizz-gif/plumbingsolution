@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\ProviderStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -47,5 +49,15 @@ class Service extends Model
     {
         return $this->belongsToMany(ServiceProvider::class, 'service_provider_service')
             ->withPivot(['price', 'is_available']);
+    }
+
+    public function scopeWithNearbyProvider(Builder $query, float $latitude, float $longitude, float $radiusKm = 10): Builder
+    {
+        return $query->whereHas('providers', function (Builder $providerQuery) use ($latitude, $longitude, $radiusKm) {
+            $providerQuery
+                ->where('service_providers.status', ProviderStatus::Approved)
+                ->where('service_provider_service.is_available', true)
+                ->withinRadius($latitude, $longitude, $radiusKm);
+        });
     }
 }
