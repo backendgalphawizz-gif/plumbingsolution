@@ -76,6 +76,8 @@ class BookingController extends Controller
             'scheduled_at' => ['required_without_all:schedule_date,schedule_time', 'date', 'after:now'],
             'address' => ['required', 'string', V::maxRule('address')],
             'promo_code' => ['nullable', 'string', 'max:30'],
+            'coupon_code' => ['nullable', 'string', 'max:30'],
+            'code' => ['nullable', 'string', 'max:30'],
             'payment_method' => ['required', 'in:razorpay,cod'],
             'transaction_id' => ['nullable', 'string', 'max:255'],
             'notes' => V::notesRules(),
@@ -101,9 +103,13 @@ class BookingController extends Controller
             ? Carbon::parse($data['scheduled_at'])
             : Carbon::parse($data['schedule_date'].' '.$data['schedule_time']);
 
-        $pricing = $coupons->calculateForService($service, $data['promo_code'] ?? null);
+        $user = $request->user();
+        $promoCode = $coupons->resolveFromRequest($request)
+            ?? $coupons->appliedBookingCoupon($user, $service->id);
 
-        if (! empty($data['promo_code']) && ! $pricing['coupon_applied']) {
+        $pricing = $coupons->calculateForService($service, $promoCode, $provider);
+
+        if ($promoCode && ! $pricing['coupon_applied']) {
             return $this->error('Invalid or inapplicable promo code.', 422);
         }
 
@@ -160,6 +166,8 @@ class BookingController extends Controller
         }
 
         $booking->load(['serviceProvider', 'service', 'images', 'payment']);
+
+        $coupons->clearAppliedBookingCoupon($user, $service->id);
 
         app(PushNotificationService::class)->bookingCreated($booking);
 

@@ -5,16 +5,78 @@ namespace App\Services;
 use App\Enums\CouponAppliesTo;
 use App\Models\Coupon;
 use App\Models\Service;
+use App\Models\ServiceProvider;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class CouponService
 {
     public function find(string $code, CouponAppliesTo $appliesTo): ?Coupon
     {
-        return Coupon::where('code', strtoupper($code))
+        $code = strtoupper(trim($code));
+
+        if ($code === '') {
+            return null;
+        }
+
+        return Coupon::where('code', $code)
             ->where('applies_to', $appliesTo->value)
             ->first();
+    }
+
+    public function resolveFromRequest(Request $request): ?string
+    {
+        foreach (['coupon_code', 'promo_code', 'code'] as $key) {
+            $value = trim((string) $request->input($key, ''));
+
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    public function storeAppliedOrderCoupon(User $user, string $code): void
+    {
+        $user->update(['applied_order_coupon_code' => strtoupper(trim($code))]);
+    }
+
+    public function clearAppliedOrderCoupon(User $user): void
+    {
+        if ($user->applied_order_coupon_code) {
+            $user->update(['applied_order_coupon_code' => null]);
+        }
+    }
+
+    public function appliedOrderCoupon(User $user): ?string
+    {
+        $code = trim((string) ($user->applied_order_coupon_code ?? ''));
+
+        return $code !== '' ? $code : null;
+    }
+
+    public function storeAppliedBookingCoupon(User $user, int $serviceId, string $code): void
+    {
+        Cache::put(
+            $this->bookingCouponCacheKey($user->id, $serviceId),
+            strtoupper(trim($code)),
+            now()->addDay()
+        );
+    }
+
+    public function appliedBookingCoupon(User $user, int $serviceId): ?string
+    {
+        $code = Cache::get($this->bookingCouponCacheKey($user->id, $serviceId));
+
+        return is_string($code) && $code !== '' ? $code : null;
+    }
+
+    public function clearAppliedBookingCoupon(User $user, int $serviceId): void
+    {
+        Cache::forget($this->bookingCouponCacheKey($user->id, $serviceId));
     }
 
     public function activeCoupons(CouponAppliesTo $appliesTo): Collection
@@ -66,30 +128,24 @@ class CouponService
             ->sum(fn ($item) => (float) ($item->product->sale_price ?? $item->product->price) * $item->quantity);
     }
 
-    private function couponTitle(Coupon $coupon): string
+    public function calculateForCart(User $user, ?string $couponCode = null): array
     {
-        if ($coupon->discount_type === 'percent') {
-            $value = rtrim(rtrim(number_format((float) $coupon->discount_value, 2), '0'), '.');
+        $subtotal = $this->cartSubtotalForUser($user);
 
-            return "{$value}% OFF";
-        }
-
-        return '₹'.number_format((float) $coupon->discount_value, 0).' OFF';
+        return $this->calculateForAmount($subtotal, $couponCode, CouponAppliesTo::Order);
     }
 
-    private function couponDescription(Coupon $coupon): string
+    public function servicePrice(Service $service, ?ServiceProvider $provider = null): float
     {
-        $parts = [];
+        if ($provider) {
+            $linked = $provider->services()->where('services.id', $service->id)->first();
 
-        if ((float) $coupon->min_order_amount > 0) {
-            $parts[] = 'Min. order ₹'.number_format((float) $coupon->min_order_amount, 0);
+            if ($linked?->pivot?->price !== null) {
+                return (float) $linked->pivot->price;
+            }
         }
 
-        if ($coupon->expires_at) {
-            $parts[] = 'Valid till '.$coupon->expires_at->format('M d, Y');
-        }
-
-        return $parts !== [] ? implode(' · ', $parts) : 'No minimum order';
+        return (float) $service->starting_price;
     }
 
     public function calculateForAmount(float $subtotal, ?string $couponCode, CouponAppliesTo $appliesTo): array
@@ -119,17 +175,47 @@ class CouponService
         ]);
     }
 
-    public function calculateForService(Service $service, ?string $couponCode): array
+    public function calculateForService(Service $service, ?string $couponCode, ?ServiceProvider $provider = null): array
     {
-        $result = $this->calculateForAmount(
-            (float) $service->starting_price,
-            $couponCode,
-            CouponAppliesTo::Booking
-        );
+        $subtotal = $this->servicePrice($service, $provider);
+
+        $result = $this->calculateForAmount($subtotal, $couponCode, CouponAppliesTo::Booking);
 
         return array_merge([
             'service_id' => $service->id,
             'service_name' => $service->name,
+            'service_price' => $subtotal,
         ], $result);
+    }
+
+    private function couponTitle(Coupon $coupon): string
+    {
+        if ($coupon->discount_type === 'percent') {
+            $value = rtrim(rtrim(number_format((float) $coupon->discount_value, 2), '0'), '.');
+
+            return "{$value}% OFF";
+        }
+
+        return '₹'.number_format((float) $coupon->discount_value, 0).' OFF';
+    }
+
+    private function couponDescription(Coupon $coupon): string
+    {
+        $parts = [];
+
+        if ((float) $coupon->min_order_amount > 0) {
+            $parts[] = 'Min. order ₹'.number_format((float) $coupon->min_order_amount, 0);
+        }
+
+        if ($coupon->expires_at) {
+            $parts[] = 'Valid till '.$coupon->expires_at->format('M d, Y');
+        }
+
+        return $parts !== [] ? implode(' · ', $parts) : 'No minimum order';
+    }
+
+    private function bookingCouponCacheKey(int $userId, int $serviceId): string
+    {
+        return "user:{$userId}:booking_coupon:{$serviceId}";
     }
 }

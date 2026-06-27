@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\User;
 
-use App\Enums\CouponAppliesTo;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
@@ -16,7 +15,6 @@ use App\Models\Transaction;
 use App\Models\UserAddress;
 use App\Services\CouponService;
 use App\Services\PushNotificationService;
-use App\Services\TaxService;
 use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -34,13 +32,15 @@ class CheckoutController extends Controller
         ]);
     }
 
-    public function placeOrder(Request $request): JsonResponse
+    public function placeOrder(Request $request, CouponService $coupons): JsonResponse
     {
         $data = $request->validate([
             'address_id' => ['required', 'exists:user_addresses,id'],
             'payment_method' => ['required', 'in:razorpay,cod'],
             'transaction_id' => ['nullable', 'string', 'max:255'],
             'coupon_code' => ['nullable', 'string', 'max:30'],
+            'promo_code' => ['nullable', 'string', 'max:30'],
+            'code' => ['nullable', 'string', 'max:30'],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -68,17 +68,12 @@ class CheckoutController extends Controller
             }
         }
 
-        $subtotal = $cartItems->sum(fn ($item) => (float) ($item->product->sale_price ?? $item->product->price) * $item->quantity);
-        $discount = 0;
+        $couponCode = $coupons->resolveFromRequest($request) ?? $coupons->appliedOrderCoupon($user);
+        $pricing = $coupons->calculateForCart($user, $couponCode);
 
-        if (! empty($data['coupon_code'])) {
-            $coupon = app(CouponService::class)->find($data['coupon_code'], CouponAppliesTo::Order);
-            if ($coupon && $coupon->isValidFor($subtotal)) {
-                $discount = $coupon->calculateDiscount($subtotal);
-            }
+        if ($couponCode && ! $pricing['coupon_applied']) {
+            return $this->error('Invalid or inapplicable coupon code.', 422);
         }
-
-        $pricing = app(TaxService::class)->calculate($subtotal, $discount);
 
         $order = Order::create([
             'order_number' => 'ORD-'.strtoupper(Str::random(8)),
@@ -89,6 +84,7 @@ class CheckoutController extends Controller
             'tax_amount' => $pricing['tax'],
             'shipping_amount' => 0,
             'discount_amount' => $pricing['discount'],
+            'coupon_code' => $pricing['coupon_code'],
             'total_amount' => $pricing['total'],
             'shipping_address' => $address->full_address ?? implode(', ', array_filter([
                 $address->full_name, $address->house_no, $address->road_area,
@@ -146,6 +142,7 @@ class CheckoutController extends Controller
         }
 
         $user->cartItems()->delete();
+        $coupons->clearAppliedOrderCoupon($user);
 
         $order->load(['items', 'vendor', 'payment']);
 

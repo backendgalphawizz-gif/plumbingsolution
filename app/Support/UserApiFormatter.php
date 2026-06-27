@@ -305,6 +305,7 @@ class UserApiFormatter
             $data['tax'] = (float) $order->tax_amount;
             $data['tax_percent'] = app(\App\Services\TaxService::class)->percent();
             $data['discount'] = (float) $order->discount_amount;
+            $data['coupon_code'] = $order->coupon_code;
             $data['shipping_address'] = $order->shipping_address;
             $data['tracking'] = [
                 'tracking_number' => $order->tracking_number,
