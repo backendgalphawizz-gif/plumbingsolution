@@ -26,6 +26,14 @@ class AuthRegisterController extends Controller
 
     public function register(Request $request, OtpService $otp, ProviderRegistrationService $providerRegistration): JsonResponse
     {
+        if ($request->is('api/user/*')) {
+            $request->merge(['role' => UserRole::Customer->value]);
+        }
+
+        $request->merge([
+            'email' => $request->filled('email') ? trim((string) $request->input('email')) : null,
+        ]);
+
         if ($response = $this->ensureRegisterOtpVerified($request, $otp, OtpType::Register)) {
             return $response;
         }
@@ -39,7 +47,7 @@ class AuthRegisterController extends Controller
         $rules = [
             'name' => V::nameRules(),
             'mobile' => array_merge(V::mobileRules(required: true), ['unique:users,mobile']),
-            'email' => V::emailRules(required: false, uniqueTable: 'users'),
+            'email' => V::registrationEmailRules(uniqueTable: 'users'),
             'role' => ['required', Rule::in([UserRole::Customer->value, UserRole::Provider->value])],
             'otp' => ['sometimes', 'digits:4'],
         ];

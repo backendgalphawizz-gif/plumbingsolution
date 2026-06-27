@@ -108,6 +108,12 @@ class AuthController extends Controller
             return $this->error('Please verify your mobile number with OTP first.', 422);
         }
 
+        $request->merge([
+            'email' => $request->filled('email') ? trim((string) $request->input('email')) : null,
+            'shop_email' => $request->filled('shop_email') ? trim((string) $request->input('shop_email')) : null,
+            'gst_number' => $request->filled('gst_number') ? strtoupper(trim((string) $request->input('gst_number'))) : null,
+        ]);
+
         $data = $request->validate(array_merge($vendorRegistration->rules(), $this->fcmTokenRules()));
 
         if (User::where('mobile', $data['mobile'])->exists()) {

@@ -63,6 +63,24 @@ class AdminValidation
         return $rules;
     }
 
+    /** Optional email on user / provider / vendor signup — omit or leave blank to skip */
+    public static function registrationEmailRules(?string $uniqueTable = 'users'): array
+    {
+        $rules = ['nullable', 'string', 'email', self::maxRule('email'), self::allowedEmailRule()];
+
+        if ($uniqueTable) {
+            $rules[] = Rule::unique($uniqueTable, 'email');
+        }
+
+        return $rules;
+    }
+
+    /** Optional GST on vendor signup — omit or leave blank to skip */
+    public static function registrationGstRules(): array
+    {
+        return ['nullable', 'string', self::maxRule('gst_number')];
+    }
+
     /** Profile update — any valid email domain, ignore current user */
     public static function profileEmailRules(\App\Models\User $user): array
     {

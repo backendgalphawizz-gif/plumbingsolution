@@ -66,6 +66,7 @@ Route::prefix('user')->group(function () {
     Route::post('auth/send-otp', [UserAuthController::class, 'sendOtp']);
     Route::post('auth/verify-otp', [UserAuthController::class, 'verifyOtp']);
     Route::post('auth/login', [UserAuthController::class, 'login']);
+    Route::post('auth/register', [AuthRegisterController::class, 'register']);
 
     Route::get('home', [HomeController::class, 'index']);
     Route::get('banners', [BannerController::class, 'index']);
