@@ -166,6 +166,18 @@ class UserApiFormatter
         ];
     }
 
+    public static function providerService(Service $service): array
+    {
+        $price = $service->pivot?->price !== null
+            ? (float) $service->pivot->price
+            : (float) $service->starting_price;
+
+        return array_merge(self::service($service), [
+            'price' => $price,
+            'is_available' => (bool) ($service->pivot?->is_available ?? true),
+        ]);
+    }
+
     public static function serviceProvider(ServiceProvider $provider, bool $detailed = false): array
     {
         $primaryImage = $provider->relationLoaded('images')
@@ -188,6 +200,9 @@ class UserApiFormatter
             'rating' => round((float) ($provider->reviews_avg_rating ?? 0), 1),
             'reviews_count' => (int) ($provider->reviews_count ?? 0),
             'services_count' => $provider->relationLoaded('services') ? $provider->services->count() : null,
+            'services' => $provider->relationLoaded('services')
+                ? $provider->services->map(fn ($s) => self::providerService($s))->values()
+                : [],
         ];
 
         if (isset($provider->distance_km)) {
@@ -195,9 +210,7 @@ class UserApiFormatter
         }
 
         if ($detailed) {
-            $data['services'] = $provider->relationLoaded('services')
-                ? $provider->services->map(fn ($s) => self::service($s))->values()
-                : [];
+            $data['tax_percent'] = app(\App\Services\TaxService::class)->percent();
             $data['reviews'] = $provider->relationLoaded('reviews')
                 ? $provider->reviews->map(fn ($r) => self::serviceProviderReview($r))->values()
                 : [];
@@ -305,6 +318,7 @@ class UserApiFormatter
             $data['tax'] = (float) $order->tax_amount;
             $data['tax_percent'] = app(\App\Services\TaxService::class)->percent();
             $data['discount'] = (float) $order->discount_amount;
+            $data['coupon_code'] = $order->coupon_code;
             $data['shipping_address'] = $order->shipping_address;
             $data['tracking'] = [
                 'tracking_number' => $order->tracking_number,

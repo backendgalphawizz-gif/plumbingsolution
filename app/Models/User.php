@@ -16,6 +16,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name', 'email', 'mobile', 'role', 'password', 'avatar', 'fcm_token', 'address', 'wallet_balance',
+        'applied_order_coupon_code',
         'is_blocked', 'blocked_at', 'block_reason',
     ];
 

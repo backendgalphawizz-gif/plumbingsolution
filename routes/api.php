@@ -85,7 +85,6 @@ Route::prefix('user')->group(function () {
     Route::get('cms/{slug}', [CmsController::class, 'show']);
     Route::get('faqs', [CmsController::class, 'faqs']);
     Route::get('promo-codes', [PromoCodeController::class, 'index']);
-    Route::post('promo-codes/apply', [PromoCodeController::class, 'apply']);
 
     Route::middleware(['auth:sanctum', 'user.auth'])->group(function () {
         Route::post('auth/logout', [UserAuthController::class, 'logout']);
@@ -106,7 +105,9 @@ Route::prefix('user')->group(function () {
         Route::put('cart/{cartItem}', [CartController::class, 'update']);
         Route::delete('cart/{cartItem}', [CartController::class, 'destroy']);
         Route::post('cart/apply-coupon', [CartController::class, 'applyCoupon']);
+        Route::post('cart/remove-coupon', [CartController::class, 'removeCoupon']);
         Route::get('coupons', [CouponController::class, 'index']);
+        Route::post('promo-codes/apply', [PromoCodeController::class, 'apply']);
 
         Route::get('checkout/payment-methods', [CheckoutController::class, 'paymentMethods']);
         Route::post('checkout/place-order', [CheckoutController::class, 'placeOrder']);

@@ -16,6 +16,7 @@ use App\Support\ProviderApiFormatter;
 use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -42,6 +43,7 @@ class AuthRegisterController extends Controller
 
         if ($isProvider) {
             $providerRegistration->normalizeSkills($request);
+            $providerRegistration->normalizeAccountType($request);
         }
 
         $rules = [
@@ -61,23 +63,23 @@ class AuthRegisterController extends Controller
 
         $data = $request->validate(array_merge($rules, $this->fcmTokenRules()));
 
-        if (User::where('mobile', $data['mobile'])->exists()) {
-            return $this->error('Mobile number is already registered.', 422);
-        }
+        $user = DB::transaction(function () use ($data, $request, $isProvider, $providerRegistration) {
+            $user = User::create([
+                'name' => $data['name'],
+                'mobile' => $data['mobile'],
+                'email' => $data['email'] ?? null,
+                'address' => $data['address'] ?? null,
+                'role' => $data['role'],
+                'password' => Hash::make(Str::random(32)),
+            ]);
 
-        $user = User::create([
-            'name' => $data['name'],
-            'mobile' => $data['mobile'],
-            'email' => $data['email'] ?? null,
-            'address' => $data['address'] ?? null,
-            'role' => $data['role'],
-            'password' => Hash::make(Str::random(32)),
-        ]);
-
-        if ($isProvider) {
-            $provider = $providerRegistration->createForUser($user, $data, $request);
-            $user->setRelation('serviceProvider', $provider);
-        }
+            if ($isProvider) {
+                $provider = $providerRegistration->createForUser($user, $data, $request);
+                $user->setRelation('serviceProvider', $provider);
+            }
+            
+            return $user;
+        });
 
         $otp->consumeVerification($data['mobile'], OtpType::Register);
         $this->saveFcmToken($user, $data['fcm_token'] ?? null);

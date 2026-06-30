@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\Service;
 use App\Models\ServiceCategory;
+use App\Services\ProviderRegistrationService;
 use App\Support\AdminValidation as V;
 use App\Support\UserApiFormatter;
 use Illuminate\Http\JsonResponse;
@@ -15,10 +16,22 @@ class ServiceController extends Controller
 {
     use ApiResponse;
 
-    public function categories(): JsonResponse
+    public function categories(Request $request): JsonResponse
     {
+        $request->validate(array_merge([
+            'radius_km' => ['nullable', 'numeric', 'min:1', 'max:50'],
+        ], app(ProviderRegistrationService::class)->locationRules()));
+
+        $latitude = (float) $request->latitude;
+        $longitude = (float) $request->longitude;
+        $radiusKm = (float) ($request->radius_km ?? 10);
+
+        $nearbyServiceQuery = fn ($q) => $q->where('status', true)
+            ->withNearbyProvider($latitude, $longitude, $radiusKm);
+
         $categories = ServiceCategory::where('status', true)
-            ->withCount(['services' => fn ($q) => $q->where('status', true)])
+            ->withCount(['services' => $nearbyServiceQuery])
+            ->having('services_count', '>', 0)
             ->orderBy('sort_order')
             ->get()
             ->map(fn ($c) => [
@@ -29,7 +42,14 @@ class ServiceController extends Controller
                 'providers_count' => $c->services_count,
             ]);
 
-        return $this->success($categories);
+        return $this->success([
+            'location' => [
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+                'radius_km' => $radiusKm,
+            ],
+            'items' => $categories,
+        ]);
     }
 
     public function index(Request $request): JsonResponse

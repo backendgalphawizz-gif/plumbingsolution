@@ -30,13 +30,26 @@ class ServiceProviderController extends Controller
         $longitude = (float) $request->longitude;
         $radiusKm = (float) ($request->radius_km ?? 10);
 
+        $categoryId = $request->integer('category_id') ?: null;
+
         $providers = ServiceProvider::where('status', ProviderStatus::Approved)
             ->nearby($latitude, $longitude, $radiusKm)
-            ->with('images')
+            ->with([
+                'images',
+                'services' => function ($q) use ($categoryId) {
+                    $q->where('services.status', true)
+                        ->wherePivot('is_available', true)
+                        ->with('category')
+                        ->when($categoryId, fn ($sq) => $sq->where('service_category_id', $categoryId));
+                },
+            ])
             ->withAvg('reviews', 'rating')
             ->withCount('reviews')
-            ->when($request->category_id, function ($q, $categoryId) {
-                $q->whereHas('services', fn ($sq) => $sq->where('service_category_id', $categoryId)->where('status', true));
+            ->when($categoryId, function ($q) use ($categoryId) {
+                $q->whereHas('services', fn ($sq) => $sq
+                    ->where('service_category_id', $categoryId)
+                    ->where('services.status', true)
+                    ->where('service_provider_service.is_available', true));
             })
             ->when($request->search, fn ($q, $s) => $q->where(function ($q) use ($s) {
                 $q->where('name', 'like', "%{$s}%")

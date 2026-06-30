@@ -15,6 +15,7 @@ use App\Support\AdminValidation as V;
 use App\Support\VendorApiFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -116,21 +117,21 @@ class AuthController extends Controller
 
         $data = $request->validate(array_merge($vendorRegistration->rules(), $this->fcmTokenRules()));
 
-        if (User::where('mobile', $data['mobile'])->exists()) {
-            return $this->error('Mobile number is already registered.', 422);
-        }
+        $user = DB::transaction(function () use ($data, $request, $vendorRegistration) {
+            $user = User::create([
+                'name' => $data['name'],
+                'mobile' => $data['mobile'],
+                'email' => $data['email'] ?? $data['shop_email'] ?? null,
+                'address' => $data['address'],
+                'role' => UserRole::Vendor,
+                'password' => Hash::make(Str::random(32)),
+            ]);
 
-        $user = User::create([
-            'name' => $data['name'],
-            'mobile' => $data['mobile'],
-            'email' => $data['email'] ?? $data['shop_email'] ?? null,
-            'address' => $data['address'],
-            'role' => UserRole::Vendor,
-            'password' => Hash::make(Str::random(32)),
-        ]);
+            $vendor = $vendorRegistration->createForUser($user, $data, $request);
+            $user->setRelation('vendor', $vendor);
 
-        $vendor = $vendorRegistration->createForUser($user, $data, $request);
-        $user->setRelation('vendor', $vendor);
+            return $user;
+        });
 
         $otp->consumeVerification($data['mobile'], OtpType::VendorRegister);
 
