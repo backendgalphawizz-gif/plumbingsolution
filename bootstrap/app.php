@@ -68,9 +68,31 @@ return Application::configure(basePath: dirname(__DIR__))
                 }
 
                 if (str_contains($e->getMessage(), 'Duplicate entry')) {
+                    $message = 'This value already exists. Please use a different one.';
+
+                    if (str_contains($e->getMessage(), 'users.mobile')) {
+                        $message = 'Mobile number is already registered.';
+                    } elseif (str_contains($e->getMessage(), 'users.email')) {
+                        $message = 'Email address is already registered.';
+                    }
+
                     return response()->json([
                         'success' => false,
-                        'message' => 'This value already exists. Please use a different one.',
+                        'message' => $message,
+                        'errors' => null,
+                    ], 422);
+                }
+
+                if (str_contains($e->getMessage(), 'cannot be null')) {
+                    $message = 'A required field is missing. Please check your input.';
+                    if (preg_match("/Column '([^']+)' cannot be null/", $e->getMessage(), $matches)) {
+                        $field = str_replace('_', ' ', $matches[1]);
+                        $message = 'The '.ucfirst($field).' field is required.';
+                    }
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => $message,
                         'errors' => null,
                     ], 422);
                 }

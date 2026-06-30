@@ -7,8 +7,10 @@ use App\Enums\UserRole;
 use App\Models\ProviderDocument;
 use App\Models\ServiceProvider;
 use App\Models\User;
+use App\Support\AdminValidation as V;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ProviderRegistrationService
 {
@@ -25,7 +27,7 @@ class ProviderRegistrationService
             'account_holder_name' => ['required', 'string', 'max:100'],
             'ifsc_code' => ['required', 'string', 'max:11', 'regex:/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/'],
             'bank_name' => ['required', 'string', 'max:100'],
-            'account_type' => ['required', 'in:savings,current'],
+            'account_type' => ['required', Rule::in(['savings', 'current', 'saving', 'Saving', 'Savings', 'Current'])],
         ]);
     }
 
@@ -51,9 +53,25 @@ class ProviderRegistrationService
         }
     }
 
+    public function normalizeAccountType(Request $request): void
+    {
+        if (! $request->has('account_type')) {
+            return;
+        }
+
+        $request->merge([
+            'account_type' => V::normalizeAccountType((string) $request->input('account_type')),
+        ]);
+    }
+
     public function createForUser(User $user, array $data, Request $request): ServiceProvider
     {
         return DB::transaction(function () use ($user, $data, $request) {
+            ServiceProvider::query()
+                ->where('mobile', $user->mobile)
+                ->whereNull('user_id')
+                ->delete();
+
             $provider = ServiceProvider::create([
                 'user_id' => $user->id,
                 'name' => $user->name,
@@ -68,7 +86,7 @@ class ProviderRegistrationService
                 'account_holder_name' => $data['account_holder_name'],
                 'ifsc_code' => strtoupper($data['ifsc_code']),
                 'bank_name' => $data['bank_name'],
-                'account_type' => $data['account_type'],
+                'account_type' => V::normalizeAccountType($data['account_type']),
             ]);
 
             $this->storeDocument($provider, 'aadhar_front', $request->file('aadhar_front'));

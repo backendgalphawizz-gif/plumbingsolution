@@ -12,6 +12,7 @@ use App\Models\ServiceBooking;
 use App\Models\ServiceProvider;
 use App\Models\ServiceProviderReview;
 use App\Models\User;
+use App\Services\TaxService;
 
 class ProviderApiFormatter
 {
@@ -164,8 +165,15 @@ class ProviderApiFormatter
         if ($detailed) {
             $data['notes'] = $booking->notes;
             $data['description'] = $booking->description;
-            $data['subtotal'] = (float) ($booking->subtotal ?? $booking->amount);
-            $data['discount'] = (float) ($booking->discount_amount ?? 0);
+            $subtotal = (float) ($booking->subtotal ?? $booking->amount);
+            $discount = (float) ($booking->discount_amount ?? 0);
+            $data['subtotal'] = $subtotal;
+            $data['discount'] = $discount;
+            $data['tax'] = round(
+                (float) $booking->amount - max(0, $subtotal - $discount),
+                2
+            );
+            $data['tax_percent'] = app(TaxService::class)->percent();
             $data['promo_code'] = $booking->coupon_code;
             $data['issue_images'] = $booking->relationLoaded('images')
                 ? $booking->images->map(fn ($image) => [
